@@ -303,6 +303,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const shiftYm = (ym,k) => { const [y,m]=ym.split('-').map(Number); return ymOf(new Date(y,m-1+k,1)); };
 const WD = ['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+const APP_VER = '4 (26/10)';
 const HINT = 'Gõ tắt: 45k = 45.000 · 1,2tr hoặc 1tr2 = 1.200.000 · số dưới 1.000 tự hiểu là nghìn';
 
 function parseAmt(raw){
@@ -363,7 +364,7 @@ function renderStatus(){
   const days=S.lastBackup? Math.floor((Date.now()-S.lastBackup)/864e5) : null;
   const b = days===null ? 'chưa sao lưu lần nào' : days===0 ? 'đã sao lưu hôm nay' : 'sao lưu cách đây '+days+' ngày';
   dot.className='dot '+((n>0&&(days===null||days>30))?'busy':'ok');
-  txt.textContent=(navigator.onLine?'':'Đang offline · ')+'Đã lưu trên máy · '+n+' giao dịch · '+b;
+  txt.textContent=(navigator.onLine?'':'Đang offline · ')+'Đã lưu trên máy · '+n+' giao dịch · '+b+' · Phiên bản '+APP_VER;
   $('backupInfo').textContent = S.lastBackup ? 'Lần sao lưu gần nhất: '+new Date(S.lastBackup).toLocaleString('vi-VN') : 'Chưa sao lưu lần nào.';
 }
 
@@ -776,7 +777,11 @@ $('importYes').onclick=()=>{
 /* ---------- khởi động ---------- */
 load(); render();
 window.addEventListener('online',renderStatus); window.addEventListener('offline',renderStatus);
-if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
+  const hadSW=!!navigator.serviceWorker.controller; let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{ if(hadSW&&!reloaded){ reloaded=true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
+}
 if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
 })();
 </script>
