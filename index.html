@@ -277,6 +277,7 @@ details.panel[open] summary::after{content:"－"}
       <div id="setRows" style="display:flex;flex-direction:column;gap:8px"></div>
       <div class="row-btns">
         <button class="btn" type="button" id="addCat">+ Thêm danh mục</button>
+        <button class="btn" type="button" id="cleanCats" hidden>Xóa danh mục mặc định chưa dùng</button>
         <button class="btn ghost" type="button" id="clearSample" hidden>Xóa dữ liệu mẫu</button>
       </div>
       <div class="hint">Hạn mức để trống hoặc 0 = không giới hạn. Mọi thay đổi tự lưu.</div>
@@ -381,6 +382,8 @@ function render(){
   $('mLabel').textContent='Tháng '+Number(m)+'/'+y;
   renderSummary(); renderChips(); renderLedger(); renderBudgets(); renderTrend(); renderSettings(); renderStatus();
   $('clearSample').hidden = !Object.values(S.months).some(a=>a.some(it=>it.sample));
+  { const used=new Set(); for(const ym in S.months) for(const it of S.months[ym]) used.add(it.cat);
+    $('cleanCats').hidden = !(cats().some(c=>!DEFAULT_IDS.has(c.id)) && cats().some(c=>DEFAULT_IDS.has(c.id)&&!used.has(c.id)&&!c.jar&&!c.kind)); }
 }
 function renderSummary(){
   const t=totals(S.cur), net=t.thu-t.chi;
@@ -527,8 +530,18 @@ $('setRows').addEventListener('change',e=>{
 });
 $('setRows').addEventListener('click',e=>{
   const b=e.target.closest('[data-delcat]'); if(!b) return;
-  twoStep(b,()=>{ S.settings.cats=cats().filter(c=>c.id!==b.dataset.delcat); save(); render(); });
+  const id=b.dataset.delcat;
+  const n=Object.values(S.months).reduce((s,a)=>s+a.filter(i=>i.cat===id).length,0);
+  if(n){ toast('“'+catName(id)+'” đang có '+n+' giao dịch nên không xóa được — đổi tên nếu cần'); return; }
+  twoStep(b,()=>{ S.settings.cats=cats().filter(c=>c.id!==id); if(document.activeElement) document.activeElement.blur(); save(); render(); toast('Đã xóa danh mục'); });
 });
+$('cleanCats').onclick=()=>{
+  const used=new Set(); for(const ym in S.months) for(const it of S.months[ym]) used.add(it.cat);
+  const before=cats().length;
+  S.settings.cats=cats().filter(c=>!(DEFAULT_IDS.has(c.id)&&!used.has(c.id)&&!c.jar&&!c.kind));
+  if(document.activeElement) document.activeElement.blur();
+  save(); render(); toast('Đã xóa '+(before-cats().length)+' danh mục mặc định chưa dùng');
+};
 $('addCat').onclick=()=>{
   const c={id:'c'+uid(),name:'Danh mục mới',type:'chi',budget:0};
   S.settings.cats=[...cats(),c]; save(); render();
