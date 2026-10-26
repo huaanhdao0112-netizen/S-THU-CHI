@@ -1,0 +1,64 @@
+SỔ THU CHI — HƯỚNG DẪN CÀI LÊN ĐIỆN THOẠI
+============================================
+
+App chạy độc lập, không cần Claude. Dữ liệu lưu ngay trên điện thoại của anh,
+không gửi lên máy chủ nào. Cài xong thì không cần mạng vẫn mở và nhập được.
+
+Chỉ cần làm 1 lần: đưa app lên một trang web miễn phí (GitHub Pages) để điện thoại tải về cài.
+Trang web chỉ chứa mã app, KHÔNG chứa số liệu thu chi của anh.
+
+
+BƯỚC 1 — Đưa app lên GitHub Pages (làm trên máy tính, ~10 phút)
+------------------------------------------------------------------
+1. Vào https://github.com → Sign up, tạo tài khoản miễn phí (bỏ qua nếu đã có).
+2. Bấm dấu "+" góc phải trên → New repository.
+   - Repository name: so-thu-chi
+   - Chọn Public → bấm Create repository.
+3. Ở trang repo vừa tạo, bấm "uploading an existing file".
+   Giải nén file zip, kéo thả TẤT CẢ các file bên trong (không kéo cả thư mục):
+     index.html, sw.js, manifest.webmanifest, xlsx.full.min.js,
+     icon-192.png, icon-512.png, apple-touch-icon.png
+   → bấm Commit changes.
+4. Vào Settings (của repo) → Pages (menu trái).
+   - Source: Deploy from a branch
+   - Branch: main, thư mục / (root) → Save.
+5. Đợi 1–2 phút, tải lại trang Pages sẽ thấy địa chỉ dạng:
+     https://<tên-tài-khoản>.github.io/so-thu-chi/
+   Mở thử trên máy tính thấy app là xong.
+
+
+BƯỚC 2 — Cài lên điện thoại
+-----------------------------
+iPhone (bắt buộc dùng Safari):
+  1. Mở địa chỉ ở trên bằng Safari.
+  2. Bấm nút Chia sẻ (ô vuông mũi tên lên) → "Thêm vào MH chính" → Thêm.
+  3. Mở app từ biểu tượng "Sổ Thu Chi" trên màn hình chính (từ nay luôn mở từ đây).
+
+Android (Chrome):
+  1. Mở địa chỉ ở trên bằng Chrome.
+  2. Bấm ⋮ góc phải → "Cài đặt ứng dụng" hoặc "Thêm vào màn hình chính".
+  3. Mở app từ biểu tượng trên màn hình chính.
+
+Kiểm tra offline: bật chế độ máy bay → mở app → vẫn nhập được là đạt.
+
+
+SAO LƯU — RẤT QUAN TRỌNG
+------------------------
+- Dữ liệu chỉ nằm trên điện thoại. Mất máy, xóa app, xóa dữ liệu Safari/Chrome là mất.
+- Mỗi tháng: mở "Sao lưu & khôi phục" → "Sao lưu ra file" → gửi file vào Zalo
+  (Cloud của tôi) / Google Drive / email.
+- Đổi máy: cài app như bước 2 → "Khôi phục từ file" → chọn file sao lưu.
+- Dòng trạng thái cuối trang hiện số ngày từ lần sao lưu gần nhất (chấm vàng = quá 30 ngày).
+
+
+DÙNG CHUNG 2 VỢ CHỒNG?
+----------------------
+Mỗi điện thoại là một sổ riêng, không tự đồng bộ với nhau.
+Nếu cần sổ chung, báo lại để làm bản dùng Google Sheets làm nơi lưu chung.
+
+
+CẬP NHẬT APP SAU NÀY
+--------------------
+Khi có bản index.html mới: upload đè lên repo GitHub, đồng thời mở sw.js đổi dòng
+  const CACHE = 'so-thu-chi-v1';   →   'so-thu-chi-v2'
+Điện thoại sẽ nhận bản mới ở lần mở app thứ 2 có mạng. Dữ liệu cũ giữ nguyên.
