@@ -75,6 +75,12 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;font-size:13.5px}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+#catChips{display:flex;flex-direction:column;gap:10px}
+.chipgroup{display:flex;flex-direction:column;gap:5px}
+.chipgroup .gl{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.04em}
+.tag.refund{color:var(--income);border-color:var(--income)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13.5px}
+.check input{margin-top:3px;width:18px;height:18px}
 
 .main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px;align-items:start}
 .col{display:flex;flex-direction:column;gap:22px;min-width:0}
@@ -87,7 +93,7 @@ section h2 small{font-weight:500;font-size:12.5px;color:var(--muted)}
 .tx .what{min-width:0}
 .tx .cat{font-weight:600;font-size:14px}
 .tx .note{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tag{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:6px;font-weight:600}
+.tag{white-space:nowrap;display:inline-block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin-left:6px;font-weight:600}
 .tx .amt{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
 .del{border:0;background:none;width:36px;height:30px;border-radius:6px;color:var(--muted);font-size:17px}
 .del:hover{background:var(--sunk);color:var(--expense)}
@@ -119,7 +125,7 @@ details.panel summary::-webkit-details-marker{display:none}
 details.panel summary::after{content:"＋";color:var(--muted)}
 details.panel[open] summary::after{content:"－"}
 .setbody{padding:0 16px 16px;display:flex;flex-direction:column;gap:8px}
-.setrow{display:grid;grid-template-columns:minmax(0,1.4fr) 90px minmax(0,1fr) 36px;gap:8px;align-items:center}
+.setrow{display:grid;grid-template-columns:minmax(0,1.6fr) 74px minmax(0,1.1fr) minmax(0,1fr) 36px;gap:8px;align-items:center}
 .setrow input,.setrow select{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
 .setrow input.num{text-align:right}
 .sethead{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
@@ -142,9 +148,14 @@ details.panel[open] summary::after{content:"－"}
   .f-go .btn{width:100%;padding:12px}
 }
 @media (max-width:480px){
-  .summary > div + div{padding-left:10px}
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
   .summary > div{padding-right:6px}
-  .setrow{grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr) 32px}
+  .summary > div + div{padding-left:12px}
+  .summary > div:nth-child(3){grid-column:1 / -1;padding-left:0;border-left:0;border-top:1px solid var(--line)}
+  .summary .big{font-size:19px}
+  .setrow{grid-template-columns:minmax(0,1fr) 64px minmax(0,1fr) 32px;row-gap:4px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  .setrow > [data-f="name"]{grid-column:1 / -1}
+  .sethead{display:none}
 }
 </style>
 </head>
@@ -200,7 +211,7 @@ details.panel[open] summary::after{content:"－"}
     <div class="hint" id="amtHint"></div>
     <div class="field f-cats">
       <span class="label">Danh mục</span>
-      <div class="chips" id="catChips"></div>
+      <div id="catChips"></div>
     </div>
   </form>
 
@@ -225,8 +236,23 @@ details.panel[open] summary::after{content:"－"}
   </div>
 
   <details class="panel" id="backupBox">
-    <summary>Sao lưu & khôi phục</summary>
+    <summary>Nhập Excel · Sao lưu · Khôi phục</summary>
     <div class="setbody">
+      <span class="label">Nhập từ file Excel</span>
+      <div class="hint">Chọn file Sổ thu chi (.xlsx). App gộp thêm vào dữ liệu đang có, dòng đã nhập trước đó tự bỏ qua — cập nhật file rồi nhập lại thoải mái.</div>
+      <div class="row-btns" style="margin-top:0">
+        <label class="btn primary" for="importFile" style="display:inline-block">Nhập từ Excel</label>
+        <input type="file" id="importFile" accept=".xlsx,.xls,.csv" hidden>
+      </div>
+      <div class="confirmbar" id="importConfirm" style="border-color:var(--accent);background:var(--sunk)" hidden>
+        <span id="importMsg"></span>
+        <label class="check" id="dropDefWrap"><input type="checkbox" id="dropDef" checked><span>Bỏ các danh mục mặc định của app chưa dùng đến (dùng danh mục theo file Excel)</span></label>
+        <div class="row-btns" style="margin:0">
+          <button class="btn primary" type="button" id="importYes">Nhập</button>
+          <button class="btn" type="button" id="importNo">Hủy</button>
+        </div>
+      </div>
+      <span class="label" style="margin-top:10px">Sao lưu & khôi phục</span>
       <div class="hint" id="backupInfo"></div>
       <div class="row-btns">
         <button class="btn primary" type="button" id="backupBtn">Sao lưu ra file</button>
@@ -247,7 +273,7 @@ details.panel[open] summary::after{content:"－"}
   <details class="panel" id="settingsBox">
     <summary>Cài đặt danh mục & hạn mức</summary>
     <div class="setbody">
-      <div class="setrow sethead"><span>Danh mục</span><span>Loại</span><span style="text-align:right">Hạn mức/tháng</span><span></span></div>
+      <div class="setrow sethead"><span>Danh mục</span><span>Loại</span><span>Hũ / Tính chất</span><span style="text-align:right">Hạn mức/tháng</span><span></span></div>
       <div id="setRows" style="display:flex;flex-direction:column;gap:8px"></div>
       <div class="row-btns">
         <button class="btn" type="button" id="addCat">+ Thêm danh mục</button>
@@ -262,6 +288,7 @@ details.panel[open] summary::after{content:"－"}
 <div class="toast" id="toast" hidden></div>
 
 <script src="xlsx.full.min.js" defer></script>
+<script src="jszip.min.js" defer></script>
 <script>
 (function(){
 "use strict";
@@ -311,6 +338,9 @@ const DEFAULT_CATS = [
   {id:'thukhac',name:'Thu khác',type:'thu',budget:0}
 ];
 
+const JARS=['Thiết yếu','Tự do tài chính','Tiết kiệm dài hạn','Giáo dục','Hưởng thụ','Cho đi'];
+const KINDS=['Thu nhập','Rút quỹ','Không tính'];
+
 /* ---------- state & storage (chỉ trên máy) ---------- */
 const KEY='so-thu-chi-v1';
 const S = { settings:{cats:DEFAULT_CATS.map(c=>({...c}))}, months:{}, lastBackup:0, cur:ymOf(new Date()), type:'chi', cat:'an', storageOk:true };
@@ -341,7 +371,8 @@ const cats = () => S.settings.cats||[];
 const catById = id => cats().find(c=>c.id===id);
 const catName = id => (catById(id)||{name:'(danh mục đã xóa)'}).name;
 const itemsOf = ym => S.months[ym]||[];
-function totals(ym){ let thu=0,chi=0,nt=0,nc=0; for(const it of itemsOf(ym)){ if(it.type==='thu'){thu+=it.amount;nt++;} else {chi+=it.amount;nc++;} } return {thu,chi,nt,nc}; }
+const notCounted = it => { const c=catById(it.cat); return !!(c&&c.kind==='Không tính'); };
+function totals(ym){ let thu=0,chi=0,nt=0,nc=0; for(const it of itemsOf(ym)){ if(notCounted(it)) continue; if(it.type==='thu'){thu+=it.amount;nt++;} else {chi+=it.amount;nc++;} } return {thu,chi,nt,nc}; }
 function spent(catId){ return itemsOf(S.cur).filter(i=>i.type==='chi'&&i.cat===catId).reduce((s,i)=>s+i.amount,0); }
 
 /* ---------- render ---------- */
@@ -366,7 +397,14 @@ function renderSummary(){
 function renderChips(){
   const list=cats().filter(c=>c.type===S.type);
   if(!list.some(c=>c.id===S.cat)) S.cat = list[0]?list[0].id:null;
-  $('catChips').innerHTML = list.map(c=>'<button type="button" class="chip" data-cat="'+esc(c.id)+'" aria-pressed="'+(c.id===S.cat)+'">'+esc(c.name)+'</button>').join('') || '<span class="hint">Chưa có danh mục — thêm trong Cài đặt.</span>';
+  const chip=c=>'<button type="button" class="chip" data-cat="'+esc(c.id)+'" aria-pressed="'+(c.id===S.cat)+'">'+esc(c.name)+'</button>';
+  let html='';
+  if(list.some(c=>c.jar)){
+    const groups=[], idx={};
+    list.forEach(c=>{ const j=c.jar||'Khác'; if(!(j in idx)){ idx[j]=groups.length; groups.push({j,items:[]}); } groups[idx[j]].items.push(c); });
+    html=groups.map(g=>'<div class="chipgroup"><span class="gl">'+(S.type==='chi'?'HŨ ':'')+esc(g.j).toUpperCase()+'</span><div class="chips">'+g.items.map(chip).join('')+'</div></div>').join('');
+  } else if(list.length) html='<div class="chips">'+list.map(chip).join('')+'</div>';
+  $('catChips').innerHTML = html || '<span class="hint">Chưa có danh mục — thêm trong Cài đặt.</span>';
   document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.type===S.type)));
 }
 function renderLedger(){
@@ -382,7 +420,11 @@ function renderLedger(){
     const dt=new Date(d+'T00:00:00'), g=groups[d];
     const net=g.reduce((s,i)=>s+(i.type==='thu'?i.amount:-i.amount),0);
     return '<div class="day"><div class="dayhead"><span>'+WD[dt.getDay()]+', '+pad(dt.getDate())+'/'+pad(dt.getMonth()+1)+'</span><span class="num">'+(net<0?'−':'+')+fmt(Math.abs(net))+'</span></div>'+
-      g.map(it=>'<div class="tx"><div class="what"><div class="cat">'+esc(catName(it.cat))+(it.sample?'<span class="tag">mẫu</span>':'')+'</div>'+(it.note?'<div class="note">'+esc(it.note)+'</div>':'')+'</div><div class="amt '+(it.type==='thu'?'inc':'exp')+'">'+(it.type==='thu'?'+':'−')+fmt(it.amount)+'</div><button class="del" type="button" data-del="'+esc(it.id)+'" aria-label="Xóa giao dịch">×</button></div>').join('')+'</div>';
+      g.map(it=>{
+        const refund=it.type==='chi'&&it.amount<0, plus=it.type==='thu'||refund;
+        const sub=[it.note,it.who].filter(Boolean).join(' · ');
+        return '<div class="tx"><div class="what"><div class="cat">'+esc(catName(it.cat))+(it.sample?'<span class="tag">mẫu</span>':'')+(refund?'<span class="tag refund">hoàn tiền</span>':'')+(notCounted(it)?'<span class="tag">không tính</span>':'')+'</div>'+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'</div><div class="amt '+(plus?'inc':'exp')+'">'+(plus?'+':'−')+fmt(Math.abs(it.amount))+'</div><button class="del" type="button" data-del="'+esc(it.id)+'" aria-label="Xóa giao dịch">×</button></div>';
+      }).join('')+'</div>';
   }).join('');
 }
 function renderBudgets(){
@@ -416,6 +458,9 @@ function renderSettings(){
   $('setRows').innerHTML = cats().map(c=>'<div class="setrow" data-id="'+esc(c.id)+'">'+
     '<input id="cn-'+esc(c.id)+'" data-f="name" value="'+esc(c.name)+'" aria-label="Tên danh mục">'+
     '<select data-f="type" aria-label="Loại"><option value="chi"'+(c.type==='chi'?' selected':'')+'>Chi</option><option value="thu"'+(c.type==='thu'?' selected':'')+'>Thu</option></select>'+
+    (c.type==='chi'
+      ? '<select data-f="jar" aria-label="Hũ"><option value="">— chọn hũ —</option>'+JARS.map(j=>'<option'+(c.jar===j?' selected':'')+'>'+j+'</option>').join('')+'</select>'
+      : '<select data-f="kind" aria-label="Tính chất">'+KINDS.map(k=>'<option'+((c.kind||'Thu nhập')===k?' selected':'')+'>'+k+'</option>').join('')+'</select>')+
     '<input data-f="budget" class="num" inputmode="decimal" placeholder="Không giới hạn" value="'+(c.type==='chi'&&c.budget>0?c.budget.toLocaleString('vi-VN'):'')+'"'+(c.type==='thu'?' disabled':'')+' aria-label="Hạn mức">'+
     '<button class="del" type="button" data-delcat="'+esc(c.id)+'" aria-label="Xóa danh mục">×</button></div>').join('');
 }
@@ -475,6 +520,8 @@ $('setRows').addEventListener('change',e=>{
   const f=e.target.dataset.f;
   if(f==='name'){ const v=e.target.value.trim(); if(!v){ e.target.value=c.name; return; } c.name=v; }
   if(f==='type'){ c.type=e.target.value; if(c.type==='thu') c.budget=0; }
+  if(f==='jar') c.jar=e.target.value;
+  if(f==='kind') c.kind=e.target.value;
   if(f==='budget'){ const v=e.target.value.trim(), n=v?parseAmt(v):0; if(v&&isNaN(n)){ toast('Hạn mức chưa hợp lệ — thử 3tr hoặc 3000000'); e.target.value=c.budget>0?c.budget.toLocaleString('vi-VN'):''; return; } c.budget=n||0; }
   save(); e.target.blur(); render();
 });
@@ -540,27 +587,177 @@ function loadSample(){
   save(); render(); toast('Đã nạp dữ liệu mẫu 3 tháng — có nhãn MẪU');
 }
 
-/* ---------- xuất Excel (chạy offline) ---------- */
+/* ---------- xuất Excel theo mẫu "Sổ thu chi gia đình" (đổ dữ liệu vào template.xlsx) ---------- */
+const xesc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'');
+const xserial = d => { const [y,m,dd]=d.split('-').map(Number); return Date.UTC(y,m-1,dd)/864e5+25569; };
+const xstr = (ref,s,v) => v ? '<c r="'+ref+'" s="'+s+'" t="inlineStr"><is><t xml:space="preserve">'+xesc(v)+'</t></is></c>' : '<c r="'+ref+'" s="'+s+'"/>';
+const xnum = (ref,s,v) => (v===''||v==null||!isFinite(v)) ? '<c r="'+ref+'" s="'+s+'"/>' : '<c r="'+ref+'" s="'+s+'"><v>'+v+'</v></c>';
+function ledgerRow(n,it){
+  const E="IF(OR(D"+n+"=\"\",C"+n+"&lt;&gt;\"Chi\"),\"\",IFERROR(INDEX('Danh mục'!$B$39:$B$78,MATCH(D"+n+",'Danh mục'!$A$39:$A$78,0))&amp;\"\",\"?\"))";
+  const F="IF(D"+n+"=\"\",\"\",IF(C"+n+"=\"Thu\",IFERROR(INDEX('Danh mục'!$B$26:$B$35,MATCH(D"+n+",'Danh mục'!$A$26:$A$35,0))&amp;\"\",\"?\"),IFERROR(INDEX('Danh mục'!$D$39:$D$78,MATCH(D"+n+",'Danh mục'!$A$39:$A$78,0))&amp;\"\",\"?\")))";
+  const G="IF(OR(D"+n+"=\"\",C"+n+"&lt;&gt;\"Chi\"),\"\",IFERROR(INDEX('Danh mục'!$C$39:$C$78,MATCH(D"+n+",'Danh mục'!$A$39:$A$78,0))&amp;\"\",\"\"))";
+  return '<row r="'+n+'" spans="1:12" x14ac:dyDescent="0.3">'+
+    (it?xnum('A'+n,31,xserial(it.date)):'<c r="A'+n+'" s="31"/>')+
+    '<c r="B'+n+'" s="32"><f>IF(A'+n+'="","",DATE(YEAR(A'+n+'),MONTH(A'+n+'),1))</f></c>'+
+    xstr('C'+n,11,it?(it.type==='thu'?'Thu':'Chi'):'')+xstr('D'+n,11,it?catName(it.cat):'')+
+    '<c r="E'+n+'" s="16"><f>'+E+'</f></c><c r="F'+n+'" s="16"><f>'+F+'</f></c><c r="G'+n+'" s="16"><f>'+G+'</f></c>'+
+    xstr('H'+n,11,it?it.note:'')+(it?xnum('I'+n,20,it.amount):'<c r="I'+n+'" s="20"/>')+
+    xstr('J'+n,11,it?it.who:'')+xstr('K'+n,11,it?it.pay:'')+xstr('L'+n,it&&it.memo?33:11,it?it.memo:'')+'</row>';
+}
+function setCell(xml,ref,val){ // ghi 1 ô trong sheet XML, giữ nguyên định dạng (s) của ô
+  const re=new RegExp('<c r="'+ref+'"(?=[ >/])[^>]*?(?:/>|>[\\s\\S]*?</c>)');
+  const m=xml.match(re); const st=m&&(m[0].match(/ s="(\d+)"/)||[])[1];
+  const sAttr=st?' s="'+st+'"':'';
+  let cell;
+  if(val===''||val==null) cell='<c r="'+ref+'"'+sAttr+'/>';
+  else if(typeof val==='number') cell='<c r="'+ref+'"'+sAttr+'><v>'+val+'</v></c>';
+  else cell='<c r="'+ref+'"'+sAttr+' t="inlineStr"><is><t xml:space="preserve">'+xesc(val)+'</t></is></c>';
+  if(m) return xml.replace(re,()=>cell);
+  if(val===''||val==null) return xml;
+  const rn=ref.replace(/^[A-Z]+/,''), col=ref.replace(/\d+$/,'');
+  const rr=new RegExp('<row r="'+rn+'"[^>]*?(?:/>|>[\\s\\S]*?</row>)'); const rm=xml.match(rr);
+  if(!rm) return xml;
+  let row=rm[0]; if(row.endsWith('/>')) row=row.slice(0,-2)+'></row>';
+  const cells=[...row.matchAll(/<c r="([A-Z]+)\d+"/g)]; const after=cells.find(c=>c[1].length>col.length||(c[1].length===col.length&&c[1]>col));
+  row = after ? row.slice(0,row.indexOf(after[0]))+cell+row.slice(row.indexOf(after[0])) : row.replace('</row>',cell+'</row>');
+  return xml.replace(rr,()=>row);
+}
 $('exportBtn').onclick=async()=>{
-  const XL=window.XLSX; if(!XL){ toast('Chưa tải xong thư viện Excel — thử lại sau giây lát'); return; }
-  const wb=XL.utils.book_new(), [y,m]=S.cur.split('-');
-  const row=i=>[i.date.split('-').reverse().join('/'),i.type==='thu'?'Thu':'Chi',catName(i.cat),i.type==='thu'?i.amount:-i.amount,i.note||''];
-  const head=['Ngày','Loại','Danh mục','Số tiền (VNĐ)','Ghi chú'];
-  const items=[...itemsOf(S.cur)].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
-  const t=totals(S.cur);
-  const ws1=XL.utils.aoa_to_sheet([head,...items.map(row),[],['','','Tổng thu',t.thu],['','','Tổng chi',-t.chi],['','','Còn lại',t.thu-t.chi]]);
-  ws1['!cols']=[{wch:12},{wch:7},{wch:24},{wch:16},{wch:36}];
-  const ws2=XL.utils.aoa_to_sheet([['Danh mục','Hạn mức','Đã chi','Còn lại','% dùng'],...cats().filter(c=>c.type==='chi').map(c=>{ const s=spent(c.id); return [c.name,c.budget||'',s,c.budget?c.budget-s:'',c.budget?Math.round(s/c.budget*100)/100:'']; })]);
-  ws2['!cols']=[{wch:24},{wch:14},{wch:14},{wch:14},{wch:9}];
-  const all=[head]; Object.keys(S.months).sort().forEach(k=>[...S.months[k]].sort((a,b)=>a.date<b.date?-1:1).forEach(i=>all.push(row(i))));
-  const ws3=XL.utils.aoa_to_sheet(all); ws3['!cols']=ws1['!cols'];
-  [ws1,ws2,ws3].forEach(ws=>{ if(!ws['!ref']) return; const r=XL.utils.decode_range(ws['!ref']); for(let R=1;R<=r.e.r;R++) for(let C=0;C<=r.e.c;C++){ const cell=ws[XL.utils.encode_cell({r:R,c:C})]; if(cell&&cell.t==='n') cell.z=(ws===ws2&&C===4)?'0%':'#,##0'; } });
-  XL.utils.book_append_sheet(wb,ws1,'T'+Number(m)+'-'+y);
-  XL.utils.book_append_sheet(wb,ws2,'Hạn mức T'+Number(m));
-  XL.utils.book_append_sheet(wb,ws3,'Tất cả');
-  const buf=XL.write(wb,{bookType:'xlsx',type:'array'});
-  const ok=await saveFile(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'SoThuChi_'+y+'-'+m+'.xlsx');
-  if(ok) toast('Đã xuất file Excel');
+  if(!window.JSZip){ toast('Chưa tải xong thư viện — thử lại sau giây lát'); return; }
+  const btn=$('exportBtn'); btn.disabled=true; const old=btn.textContent; btn.textContent='Đang tạo file…';
+  try{
+    const [y,m]=S.cur.split('-');
+    const res=await fetch('template.xlsx'); if(!res.ok) throw new Error('Thiếu file template.xlsx trên trang web');
+    const zip=await JSZip.loadAsync(await res.arrayBuffer());
+    const MAXR=1975, items=[];
+    Object.keys(S.months).filter(k=>k.startsWith(y+'-')).sort().forEach(k=>[...S.months[k]].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ts||0)-(b.ts||0)).forEach(i=>items.push(i)));
+    const warn=[];
+    if(items.length>MAXR) warn.push('chỉ xuất '+MAXR+'/'+items.length+' dòng đầu năm');
+    // Sổ thu chi
+    let s2=await zip.file('xl/worksheets/sheet2.xml').async('string');
+    const a=s2.indexOf('<row r="5"'), b=s2.indexOf('</sheetData>');
+    let rows=''; for(let n=5;n<5+MAXR;n++) rows+=ledgerRow(n,items[n-5]);
+    zip.file('xl/worksheets/sheet2.xml', s2.slice(0,a)+rows+s2.slice(b));
+    // Danh mục: năm, danh mục thu (A26:A35), danh mục chi (A39:A78)
+    let s4=await zip.file('xl/worksheets/sheet4.xml').async('string');
+    s4=setCell(s4,'C3',Number(y));
+    const thu=cats().filter(c=>c.type==='thu'), chi=cats().filter(c=>c.type==='chi');
+    if(thu.length>10) warn.push('mẫu chỉ có 10 dòng danh mục thu');
+    if(chi.length>40) warn.push('mẫu chỉ có 40 dòng danh mục chi');
+    for(let i=0;i<10;i++){ const c=thu[i], n=26+i; s4=setCell(s4,'A'+n,c?c.name:''); s4=setCell(s4,'B'+n,c?(c.kind||'Thu nhập'):''); }
+    for(let i=0;i<40;i++){ const c=chi[i], n=39+i; s4=setCell(s4,'A'+n,c?c.name:''); s4=setCell(s4,'B'+n,c?(c.jar||''):''); s4=setCell(s4,'C'+n,c?(c.group||(/^con\b/i.test(c.name)?'Con cái':'Gia đình')):''); s4=setCell(s4,'E'+n,c&&c.budget>0?c.budget:''); }
+    zip.file('xl/worksheets/sheet4.xml',s4);
+    // Tổng quan: chọn tháng đang xem
+    let s1=await zip.file('xl/worksheets/sheet1.xml').async('string');
+    zip.file('xl/worksheets/sheet1.xml',setCell(s1,'F3',Number(m)));
+    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const ok=await saveFile(blob,'So_Thu_Chi_Gia_Dinh_'+y+'.xlsx');
+    if(ok) toast('Đã xuất '+Math.min(items.length,MAXR)+' giao dịch năm '+y+(warn.length?' — lưu ý: '+warn.join('; '):''));
+  }catch(err){ toast((err&&err.message)||'Chưa xuất được file'); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+};
+
+/* ---------- nhập từ Excel (gộp, bỏ trùng) ---------- */
+const DEFAULT_IDS=new Set(DEFAULT_CATS.map(c=>c.id));
+const norm=s=>String(s==null?'':s).replace(/\s+/g,' ').trim().toLowerCase();
+function toNum(v){
+  if(typeof v==='number') return v;
+  if(v==null) return NaN;
+  let s=String(v).replace(/\s|₫|đ|vnđ|vnd/gi,''); if(!s) return NaN;
+  const neg=/^[-−(]/.test(s); s=s.replace(/[^\d.,]/g,'');
+  const n=parseFloat(s.replace(/[.,](?=\d{3}(\D|$))/g,'').replace(',','.'));
+  return isFinite(n)?(neg?-n:n):NaN;
+}
+function toDate(v,XL){
+  if(typeof v==='number'&&v>20000){ const d=XL.SSF.parse_date_code(v); return d?d.y+'-'+pad(d.m)+'-'+pad(d.d):null; }
+  if(v instanceof Date&&!isNaN(v)) return v.getFullYear()+'-'+pad(v.getMonth()+1)+'-'+pad(v.getDate());
+  const s=String(v==null?'':v).trim(); let m;
+  if((m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})/))) return m[3]+'-'+pad(m[2])+'-'+pad(m[1]);
+  if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return m[1]+'-'+pad(m[2])+'-'+pad(m[3]);
+  return null;
+}
+async function readImport(file){
+  const XL=window.XLSX; if(!XL) throw new Error('Thư viện Excel chưa tải xong, thử lại sau giây lát');
+  const wb=XL.read(await file.arrayBuffer(),{type:'array'});
+  const grid=n=>XL.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null});
+  // danh mục (nếu file có sheet "Danh mục")
+  const fileCats=[];
+  const dmName=wb.SheetNames.find(n=>/^danh m[uụ]c/i.test(n.trim()));
+  if(dmName){ let mode=null;
+    for(const r of grid(dmName)){ const a=r[0]==null?'':String(r[0]).trim(); if(!a) continue;
+      if(/^\d+\.\s/.test(a)){ mode=null; continue; }
+      if(/^danh mục thu$/i.test(a)){ mode='thu'; continue; }
+      if(/^danh mục chi$/i.test(a)){ mode='chi'; continue; }
+      if(mode==='thu') fileCats.push({name:a,type:'thu',kind:r[1]?String(r[1]).trim():'Thu nhập'});
+      if(mode==='chi'){ const b=toNum(r[4]); fileCats.push({name:a,type:'chi',jar:r[1]?String(r[1]).trim():'',group:r[2]?String(r[2]).trim():'',budget:b>0?Math.round(b):0}); }
+    } }
+  // sổ giao dịch
+  const findHead=n=>{ const g=grid(n); for(let i=0;i<Math.min(g.length,15);i++){ const h=g[i].map(x=>norm(x)); if(h.includes('ngày')&&h.some(x=>x.startsWith('số tiền'))) return {g,i,h}; } return null; };
+  const pref=[wb.SheetNames.find(n=>/sổ thu chi/i.test(n)), wb.SheetNames.find(n=>/^tất cả$/i.test(n.trim()))].filter(Boolean);
+  let found=null, sheet=null;
+  for(const n of [...pref,...wb.SheetNames]){ const f=findHead(n); if(f){ found=f; sheet=n; break; } }
+  if(!found) throw new Error('Không tìm thấy bảng có cột "Ngày" và "Số tiền" trong file');
+  const col=re=>found.h.findIndex(x=>re.test(x));
+  const c={date:col(/^ngày$/),type:col(/^loại/),cat:col(/^danh mục/),content:col(/^nội dung/),amt:col(/^số tiền/),who:col(/^người/),pay:col(/hình thức/),memo:col(/^ghi chú/)};
+  const v1=c.content<0; // file xuất từ bản app cũ: Ghi chú = nội dung, chi mang dấu âm
+  const rows=[]; const skipped=0;
+  for(let i=found.i+1;i<found.g.length;i++){
+    const r=found.g[i]; const date=c.date>=0?toDate(r[c.date],XL):null; let amt=toNum(r[c.amt]);
+    if(!date||!isFinite(amt)||amt===0) continue;
+    let type = c.type>=0&&r[c.type]!=null ? (/^thu/i.test(String(r[c.type]).trim())?'thu':'chi') : (amt>0?'thu':'chi');
+    if(v1) amt=Math.abs(amt);
+    let catN=c.cat>=0&&r[c.cat]!=null?String(r[c.cat]).trim():''; if(!catN) catN=type==='thu'?'Thu khác':'Chi khác';
+    const g=k=>c[k]>=0&&r[c[k]]!=null?String(r[c[k]]).trim():'';
+    rows.push({date,type,amount:Math.round(amt),catName:catN,note:v1?g('memo'):g('content'),who:g('who'),pay:g('pay'),memo:v1?'':g('memo')});
+  }
+  return {fileCats,rows,skipped,sheet,fileName:file.name};
+}
+function planImport(p){
+  const names=new Set(cats().map(c=>norm(c.name)));
+  const newCats=[];
+  for(const fc of p.fileCats){ if(!names.has(norm(fc.name))){ names.add(norm(fc.name)); newCats.push(fc); } }
+  for(const r of p.rows){ if(!names.has(norm(r.catName))){ names.add(norm(r.catName)); newCats.push({name:r.catName,type:r.type,jar:'',budget:0}); } }
+  const key=(d,t,a,cn,n)=>[d,t,a,norm(cn),norm(n)].join('|');
+  const have={}; for(const ym in S.months) for(const it of S.months[ym]){ const k=key(it.date,it.type,it.amount,catName(it.cat),it.note); have[k]=(have[k]||0)+1; }
+  const seen={}, add=[]; let dup=0;
+  for(const r of p.rows){ const k=key(r.date,r.type,r.amount,r.catName,r.note); seen[k]=(seen[k]||0)+1; if(seen[k]<=(have[k]||0)) dup++; else add.push(r); }
+  return {newCats,add,dup};
+}
+let pendingImport=null;
+$('importFile').onchange=async e=>{
+  const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f) return;
+  try{
+    const p=await readImport(f), plan=planImport(p);
+    pendingImport={p,plan};
+    const months=[...new Set(plan.add.map(r=>r.date.slice(0,7)))].sort().map(m=>'T'+Number(m.slice(5))+'/'+m.slice(0,4));
+    const sumChi=plan.add.filter(r=>r.type==='chi').reduce((s,r)=>s+r.amount,0), sumThu=plan.add.filter(r=>r.type==='thu').reduce((s,r)=>s+r.amount,0);
+    $('importMsg').innerHTML='<b>'+esc(p.fileName)+'</b> · sheet “'+esc(p.sheet)+'”: '+p.rows.length+' dòng.<br>'+
+      '• Thêm mới <b>'+plan.add.length+'</b> giao dịch'+(months.length?' ('+months.join(', ')+')':'')+' — chi '+fmt(sumChi)+(sumThu?', thu '+fmt(sumThu):'')+'<br>'+
+      '• Trùng, bỏ qua: '+plan.dup+(p.skipped?' · Khoản “không tính” bỏ qua: '+p.skipped:'')+'<br>'+
+      '• Danh mục mới: '+plan.newCats.length;
+    const hasUnusedDefaults=cats().some(c=>DEFAULT_IDS.has(c.id));
+    $('dropDefWrap').hidden=!(p.fileCats.length&&hasUnusedDefaults);
+    $('importYes').disabled=!plan.add.length&&!plan.newCats.length;
+    $('importConfirm').hidden=false;
+  }catch(err){ toast((err&&err.message)||'Không đọc được file này'); }
+};
+$('importNo').onclick=()=>{ pendingImport=null; $('importConfirm').hidden=true; };
+$('importYes').onclick=()=>{
+  if(!pendingImport) return;
+  const {plan,p}=pendingImport; pendingImport=null; const pendingFileCats=p.fileCats;
+  const byName=n=>cats().find(c=>norm(c.name)===norm(n));
+  for(const nc of plan.newCats) S.settings.cats.push({id:'c'+uid(),name:nc.name,type:nc.type,jar:nc.jar||'',group:nc.group||'',kind:nc.kind||'',budget:nc.budget||0});
+  for(const fc of pendingFileCats){ const ex=byName(fc.name); if(!ex) continue; if(fc.jar&&!ex.jar) ex.jar=fc.jar; if(fc.group&&!ex.group) ex.group=fc.group; if(fc.kind&&!ex.kind) ex.kind=fc.kind; }
+  const base=Date.now(); let last='';
+  plan.add.forEach((r,i)=>{ const ym=r.date.slice(0,7); (S.months[ym]=S.months[ym]||[]).push({id:uid(),type:r.type,amount:r.amount,cat:byName(r.catName).id,date:r.date,note:r.note,who:r.who,pay:r.pay,memo:r.memo,ts:base+i,src:'xlsx'}); if(ym>last) last=ym; });
+  if(!$('dropDefWrap').hidden&&$('dropDef').checked){
+    const used=new Set(); for(const ym in S.months) for(const it of S.months[ym]) used.add(it.cat);
+    const inFile=new Set(pendingFileCats.map(fc=>norm(fc.name)));
+    S.settings.cats=cats().filter(c=>!(DEFAULT_IDS.has(c.id)&&!used.has(c.id)&&!(c.budget>0)&&!inFile.has(norm(c.name))));
+  }
+  if(last) S.cur=last;
+  $('importConfirm').hidden=true; S.type='chi'; S.cat=null;
+  save(); render(); toast('Đã nhập '+plan.add.length+' giao dịch');
 };
 
 /* ---------- khởi động ---------- */
