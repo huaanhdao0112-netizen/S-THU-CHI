@@ -25,7 +25,7 @@
   --bg:#111513; --surface:#191E1B; --sunk:#222924; --ink:#E6ECE8; --muted:#97A39D; --line:#2B332E;
   --accent:#9DB2F2; --accent-ink:#0F1A3A; --income:#52C894; --expense:#F2826D; --warn:#E2B14E;
   --income-soft:#173326; --expense-soft:#3A1E18; --warn-soft:#352A12; color-scheme:dark }
-  .tile .ti{background:hsl(var(--h) 30% 25%)}}
+  .catbtn .ti,.copt .ti{background:hsl(var(--h) 30% 25%)}}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -75,20 +75,23 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .entry[data-type="thu"] .amt{color:var(--income)}
 .hint{font-size:12px;color:var(--muted);min-height:18px}
 .hint.err{color:var(--expense)}
-.catbox{border:1px solid var(--line);border-radius:16px;padding:12px 12px 14px;display:flex;flex-direction:column;gap:10px}
-.cathead{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.cathead b{font-size:14px}
-#catSel{font-size:13px;color:var(--accent);font-weight:600;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#catChips{display:flex;flex-direction:column;gap:12px}
-.chipgroup{display:flex;flex-direction:column;gap:6px}
-.chipgroup .gl{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.04em}
-.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
-.tile{display:flex;flex-direction:column;align-items:center;gap:5px;border:1.5px solid transparent;background:none;border-radius:14px;padding:8px 2px 7px;min-width:0}
-.tile:hover{background:var(--sunk)}
-.tile[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--surface))}
-.tile .ti{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:23px;line-height:1;background:hsl(var(--h) 85% 92%)}
-.tile .tn{font-size:11.5px;line-height:1.25;text-align:center;color:var(--ink);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;width:100%;min-height:2.5em}
-.tile[aria-pressed="true"] .tn{font-weight:700;color:var(--accent)}
+.catbox{position:relative}
+.catbtn{width:100%;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:0 14px;min-height:54px;background:var(--surface);color:var(--ink);text-align:left}
+.catbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.catbtn .ti,.copt .ti{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;line-height:1;flex:0 0 auto;background:hsl(var(--h) 85% 92%)}
+.catbtn .cn{flex:1;min-width:0;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.catbtn .cn small{display:block;font-size:11px;font-weight:500;color:var(--muted);margin-top:1px}
+.catbtn .chev{color:var(--muted);font-size:13px;transition:transform .15s}
+.catbox.open .chev{transform:rotate(180deg)}
+.catpanel{margin-top:8px;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.catsearch{display:block;width:100%;border:0;border-bottom:1px solid var(--line);background:var(--surface);color:var(--ink);padding:13px 14px;font-size:16px;outline:none}
+.catlist{max-height:min(46vh,300px);overflow-y:auto;overscroll-behavior:contain}
+.copt{width:100%;display:flex;align-items:center;gap:12px;border:0;background:none;color:var(--ink);padding:8px 14px;text-align:left;min-height:52px}
+.copt:hover,.copt.hl{background:var(--sunk)}
+.copt[aria-selected="true"] .cn{color:var(--accent);font-weight:700}
+.copt .cn{flex:1;min-width:0;font-size:14.5px;line-height:1.3;overflow-wrap:anywhere}
+.copt .cj{font-size:11px;color:var(--muted);flex:0 0 auto;max-width:34%;text-align:right}
+.catnone{padding:16px 14px;font-size:13px;color:var(--muted)}
 .rowfield{position:relative;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:0 14px;min-height:50px;background:var(--surface)}
 .rowfield .ri{font-size:18px;width:24px;text-align:center;flex:0 0 auto}
 .rowfield .rt{flex:1;min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -215,9 +218,12 @@ details.panel[open] summary::after{content:"－"}
       <input id="amt" class="amt" inputmode="decimal" placeholder="0 đ" aria-label="Số tiền">
       <div class="hint" id="amtHint"></div>
     </label>
-    <div class="catbox">
-      <div class="cathead"><b>Danh mục</b><span id="catSel"></span></div>
-      <div id="catChips"></div>
+    <div class="catbox" id="catBox">
+      <button type="button" class="catbtn" id="catBtn" aria-haspopup="listbox" aria-expanded="false"></button>
+      <div class="catpanel" id="catPanel" hidden>
+        <input type="search" class="catsearch" id="catSearch" placeholder="Tìm danh mục…" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Tìm danh mục">
+        <div class="catlist" id="catList" role="listbox"></div>
+      </div>
     </div>
     <div class="rowfield">
       <span class="ri" aria-hidden="true">📅</span>
@@ -338,7 +344,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const shiftYm = (ym,k) => { const [y,m]=ym.split('-').map(Number); return ymOf(new Date(y,m-1+k,1)); };
 const WD = ['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
-const APP_VER = '6 (15/11)';
+const APP_VER = '7 (15/11)';
 const HINT = 'Gõ tắt: 45k = 45.000 · 1,2tr hoặc 1tr2 = 1.200.000 · số dưới 1.000 tự hiểu là nghìn';
 
 function parseAmt(raw){
@@ -454,18 +460,20 @@ function updateReady(){
   const ok = !isNaN(parseAmt($('amt').value.trim())) && !!S.cat;
   $('saveBtn').classList.toggle('idle', !ok);
 }
-function renderChips(){
+const fold=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/\s+/g,' ').trim();
+function catsSorted(){
+  const last={}; for(const ym in S.months) for(const it of S.months[ym]) if((it.ts||0)>(last[it.cat]||0)) last[it.cat]=it.ts||0;
   const list=cats().filter(c=>c.type===S.type);
+  return list.map((c,i)=>({c,i})).sort((a,b)=>((last[b.c.id]||0)-(last[a.c.id]||0))||(a.i-b.i)).map(x=>x.c);
+}
+function renderChips(){
+  const list=catsSorted();
   if(!list.some(c=>c.id===S.cat)) S.cat = list[0]?list[0].id:null;
-  const tile=c=>'<button type="button" class="tile" data-cat="'+esc(c.id)+'" aria-pressed="'+(c.id===S.cat)+'"><span class="ti" style="--h:'+catHue(c.id)+'" aria-hidden="true">'+catIcon(c)+'</span><span class="tn">'+esc(c.name)+'</span></button>';
-  let html='';
-  if(list.some(c=>c.jar)){
-    const groups=[], idx={};
-    list.forEach(c=>{ const j=c.jar||'Khác'; if(!(j in idx)){ idx[j]=groups.length; groups.push({j,items:[]}); } groups[idx[j]].items.push(c); });
-    html=groups.map(g=>'<div class="chipgroup"><span class="gl">'+(S.type==='chi'?'HŨ ':'')+esc(g.j).toUpperCase()+'</span><div class="tiles">'+g.items.map(tile).join('')+'</div></div>').join('');
-  } else if(list.length) html='<div class="tiles">'+list.map(tile).join('')+'</div>';
-  $('catChips').innerHTML = html || '<span class="hint">Chưa có danh mục — thêm trong Cài đặt.</span>';
-  $('catSel').textContent = S.cat ? catName(S.cat) : 'Chọn danh mục';
+  const c=S.cat&&catById(S.cat);
+  $('catBtn').innerHTML = c
+    ? '<span class="ti" style="--h:'+catHue(c.id)+'" aria-hidden="true">'+catIcon(c)+'</span><span class="cn">'+esc(c.name)+(c.jar&&S.type==='chi'?'<small>Hũ '+esc(c.jar)+'</small>':'')+'</span><span class="chev" aria-hidden="true">▾</span>'
+    : '<span class="cn" style="color:var(--muted)">'+(list.length?'Chọn danh mục':'Chưa có danh mục — thêm trong Cài đặt')+'</span><span class="chev" aria-hidden="true">▾</span>';
+  if(!$('catPanel').hidden) renderCatList();
   $('entry').dataset.type = S.type;
   document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.type===S.type)));
   updateReady();
@@ -554,7 +562,27 @@ $('date').onchange=()=>{ if(!$('date').value) $('date').value=todayStr(); $('dat
 $('prevM').onclick=()=>{ S.cur=shiftYm(S.cur,-1); render(); };
 $('nextM').onclick=()=>{ S.cur=shiftYm(S.cur,1); render(); };
 document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{ S.type=b.dataset.type; S.cat=null; renderChips(); });
-$('catChips').onclick=e=>{ const b=e.target.closest('[data-cat]'); if(!b) return; S.cat=b.dataset.cat; renderChips(); };
+let catHl=0;
+function renderCatList(){
+  const q=fold($('catSearch').value), list=catsSorted().filter(c=>!q||fold(c.name).includes(q)||fold(c.jar).includes(q));
+  if(catHl>=list.length) catHl=Math.max(0,list.length-1);
+  $('catList').innerHTML = list.length ? list.map((c,i)=>'<button type="button" class="copt'+(i===catHl?' hl':'')+'" role="option" data-cat="'+esc(c.id)+'" aria-selected="'+(c.id===S.cat)+'"><span class="ti" style="--h:'+catHue(c.id)+'" aria-hidden="true">'+catIcon(c)+'</span><span class="cn">'+esc(c.name)+'</span>'+(c.jar&&S.type==='chi'?'<span class="cj">'+esc(c.jar)+'</span>':'')+'</button>').join('') : '<div class="catnone">Không có danh mục khớp “'+esc($('catSearch').value.trim())+'”.</div>';
+}
+function catOpen(on){
+  $('catPanel').hidden=!on; $('catBox').classList.toggle('open',on); $('catBtn').setAttribute('aria-expanded',String(on));
+  if(on){ $('catSearch').value=''; catHl=0; renderCatList(); const sel=$('catList').querySelector('[aria-selected="true"]'); if(sel) sel.scrollIntoView({block:'nearest'}); if(!(window.matchMedia&&matchMedia('(pointer:coarse)').matches)) $('catSearch').focus(); }
+}
+function catPick(id){ S.cat=id; catOpen(false); renderChips(); updateReady(); $('catBtn').focus({preventScroll:true}); }
+$('catBtn').onclick=()=>catOpen($('catPanel').hidden);
+$('catSearch').oninput=()=>{ catHl=0; renderCatList(); };
+$('catSearch').onkeydown=e=>{
+  const opts=[...$('catList').querySelectorAll('.copt')];
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); if(!opts.length) return; catHl=(catHl+(e.key==='ArrowDown'?1:-1)+opts.length)%opts.length; renderCatList(); $('catList').querySelector('.hl').scrollIntoView({block:'nearest'}); }
+  else if(e.key==='Enter'){ e.preventDefault(); const o=opts[catHl]; if(o) catPick(o.dataset.cat); }
+  else if(e.key==='Escape'){ e.preventDefault(); catOpen(false); $('catBtn').focus({preventScroll:true}); }
+};
+$('catList').onclick=e=>{ const b=e.target.closest('[data-cat]'); if(b) catPick(b.dataset.cat); };
+document.addEventListener('pointerdown',e=>{ if(!$('catPanel').hidden && !$('catBox').contains(e.target)) catOpen(false); });
 $('amt').oninput=()=>{
   const v=$('amt').value.trim(), h=$('amtHint'), n=parseAmt(v);
   h.classList.remove('err');
@@ -565,7 +593,7 @@ $('entry').onsubmit=e=>{
   e.preventDefault();
   const n=parseAmt($('amt').value), h=$('amtHint');
   if(isNaN(n)){ h.textContent='Nhập số tiền, ví dụ 45k hoặc 1,2tr'; h.classList.add('err'); $('amt').focus(); return; }
-  if(!S.cat){ h.textContent='Chọn một danh mục bên dưới'; h.classList.add('err'); return; }
+  if(!S.cat){ h.textContent='Chọn một danh mục'; h.classList.add('err'); return; }
   const date=$('date').value||todayStr(), ym=date.slice(0,7);
   const it={id:uid(),type:S.type,amount:n,cat:S.cat,date,note:$('note').value.trim(),ts:Date.now()};
   (S.months[ym]=S.months[ym]||[]).push(it); save();
