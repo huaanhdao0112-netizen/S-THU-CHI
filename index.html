@@ -73,7 +73,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .amt::placeholder{opacity:.45}
 .entry[data-type="chi"] .amt{color:var(--expense)}
 .entry[data-type="thu"] .amt{color:var(--income)}
-.hint{font-size:12px;color:var(--muted);min-height:18px}
+.hint{font-size:12px;color:var(--muted);min-height:18px;margin-top:6px}
 .hint.err{color:var(--expense)}
 .catbox{position:relative}
 .catbtn{width:100%;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:0 14px;min-height:54px;background:var(--surface);color:var(--ink);text-align:left}
@@ -187,7 +187,6 @@ details.panel[open] summary::after{content:"－"}
   <header class="top">
     <div class="brand">
       <h1>Sổ Thu Chi</h1>
-      <span>Gia đình · đơn vị VNĐ · lưu trên máy này</span>
     </div>
     <div class="tools">
       <div class="monthnav" role="group" aria-label="Chọn tháng">
@@ -344,8 +343,8 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const shiftYm = (ym,k) => { const [y,m]=ym.split('-').map(Number); return ymOf(new Date(y,m-1+k,1)); };
 const WD = ['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
-const APP_VER = '7 (15/11)';
-const HINT = 'Gõ tắt: 45k = 45.000 · 1,2tr hoặc 1tr2 = 1.200.000 · số dưới 1.000 tự hiểu là nghìn';
+const APP_VER = '8 (15/11)';
+const HINT = '';
 
 function parseAmt(raw){
   if(raw==null) return NaN;
@@ -441,7 +440,8 @@ function renderSummary(){
   if(budTotal>0){
     const used=bc.reduce((s,c)=>s+spent(c.id),0), p=Math.round(used/budTotal*100);
     bl.innerHTML='<span>Đã dùng <b class="num">'+p+'%</b> tổng hạn mức</span><span class="meter"><i style="width:'+Math.min(p,100)+'%;background:'+(p>100?'var(--expense)':p>=80?'var(--warn)':'var(--accent)')+'"></i></span><span class="num">'+short(used)+' / '+short(budTotal)+'</span>';
-  } else bl.innerHTML='<span>Chưa đặt hạn mức chi — mở <b>Cài đặt</b> ở cuối trang để đặt.</span>';
+  } else bl.innerHTML='';
+  bl.hidden=!budTotal;
 }
 const ICONS=[[/bảo dưỡng|sửa chữa/,'🔧'],[/vắc|y tế/,'💉'],[/sức khỏe|khám|thuốc/,'🩺'],[/sữa|bỉm|ăn dặm/,'🍼'],[/đồ chơi|vui chơi/,'🧸'],
   [/con cái|^con(\s|$|–)/,'👶'],[/online|shopee|tiktok/,'📦'],[/quần áo/,'👕'],[/mua sắm/,'🛍️'],[/nhà hàng|cafe|cà phê/,'☕'],
@@ -557,7 +557,7 @@ async function saveFile(blob, name){
 }
 
 /* ---------- events ---------- */
-$('date').value=todayStr(); $('dateTxt').textContent=dateLabel($('date').value); $('amtHint').textContent=HINT;
+$('date').value=todayStr(); $('dateTxt').textContent=dateLabel($('date').value); $('amtHint').textContent='';
 $('date').onchange=()=>{ if(!$('date').value) $('date').value=todayStr(); $('dateTxt').textContent=dateLabel($('date').value); };
 $('prevM').onclick=()=>{ S.cur=shiftYm(S.cur,-1); render(); };
 $('nextM').onclick=()=>{ S.cur=shiftYm(S.cur,1); render(); };
