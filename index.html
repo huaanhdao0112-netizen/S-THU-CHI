@@ -69,10 +69,10 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .seg button[aria-pressed="true"].thu{background:var(--income);color:#fff}
 .amtcard{background:var(--bg);border-radius:16px;padding:14px 16px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
 .amtcard .label{text-transform:none;letter-spacing:0;font-size:13px}
-.amt{font-family:var(--f-num);font-size:clamp(30px,9vw,42px);font-weight:700;text-align:center;width:100%;border:0;background:none;padding:2px 0;min-width:0;outline-offset:4px;border-radius:8px}
-.amt::placeholder{opacity:.45}
-.entry[data-type="chi"] .amt{color:var(--expense)}
-.entry[data-type="thu"] .amt{color:var(--income)}
+.amtin{font-family:var(--f-num);font-size:clamp(30px,9vw,42px);font-weight:700;text-align:center;width:100%;border:0;background:none;padding:2px 0;min-width:0;outline-offset:4px;border-radius:8px}
+.amtin::placeholder{opacity:.45}
+.entry[data-type="chi"] .amtin{color:var(--expense)}
+.entry[data-type="thu"] .amtin{color:var(--income)}
 .hint{font-size:12px;color:var(--muted);min-height:18px;margin-top:6px}
 .hint.err{color:var(--expense)}
 .catbox{position:relative}
@@ -92,6 +92,11 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .copt .cn{flex:1;min-width:0;font-size:14.5px;line-height:1.3;overflow-wrap:anywhere}
 .copt .cj{font-size:11px;color:var(--muted);flex:0 0 auto;max-width:34%;text-align:right}
 .catnone{padding:16px 14px;font-size:13px;color:var(--muted)}
+.editbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:color-mix(in srgb,var(--warn) 14%,var(--surface));border:1px solid var(--warn);border-radius:12px;padding:6px 8px 6px 12px;font-size:13px;font-weight:600}
+.editbar button{border:0;background:none;color:var(--accent);font-weight:700;font-size:13px;padding:8px}
+.tx[data-edit]{cursor:pointer;border-radius:10px;padding-left:8px;padding-right:0;margin-left:-8px}
+.tx[data-edit]:hover{background:var(--sunk)}
+.tx.editing{background:color-mix(in srgb,var(--warn) 16%,var(--surface))}
 .rowfield{position:relative;display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:0 14px;min-height:50px;background:var(--surface)}
 .rowfield .ri{font-size:18px;width:24px;text-align:center;flex:0 0 auto}
 .rowfield .rt{flex:1;min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -208,13 +213,14 @@ details.panel[open] summary::after{content:"－"}
   </div>
 
   <form class="entry" id="entry" data-type="chi" autocomplete="off">
+    <div class="editbar" id="editBar" hidden><span>✏️ Đang sửa giao dịch</span><button type="button" id="editCancel">Hủy sửa</button></div>
     <div class="seg" role="group" aria-label="Loại giao dịch">
       <button type="button" class="chi" data-type="chi" aria-pressed="true">Chi tiền</button>
       <button type="button" class="thu" data-type="thu" aria-pressed="false">Thu tiền</button>
     </div>
     <label class="amtcard">
       <span class="label">Số tiền</span>
-      <input id="amt" class="amt" inputmode="decimal" placeholder="0 đ" aria-label="Số tiền">
+      <input id="amt" class="amtin" inputmode="decimal" placeholder="0 đ" aria-label="Số tiền">
       <div class="hint" id="amtHint"></div>
     </label>
     <div class="catbox" id="catBox">
@@ -343,7 +349,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const shiftYm = (ym,k) => { const [y,m]=ym.split('-').map(Number); return ymOf(new Date(y,m-1+k,1)); };
 const WD = ['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
-const APP_VER = '8 (15/11)';
+const APP_VER = '9 (15/11)';
 const HINT = '';
 
 function parseAmt(raw){
@@ -478,9 +484,25 @@ function renderChips(){
   document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.type===S.type)));
   updateReady();
 }
+let editId=null;
+function findItem(id){ for(const ym in S.months){ const it=S.months[ym].find(i=>i.id===id); if(it) return {it,ym}; } return null; }
+const amtText=n=>n<1000?String(Math.round(n)/1000).replace('.',',')+'k':String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+function updateEditUI(){ $('editBar').hidden=!editId; $('saveBtn').textContent=editId?'Cập nhật':'Lưu lại'; }
+function startEdit(id){
+  const f=findItem(id); if(!f) return; const it=f.it;
+  editId=id; S.type=it.type; S.cat=it.cat;
+  $('amt').value=amtText(it.amount); $('note').value=it.note||''; $('date').value=it.date; $('dateTxt').textContent=dateLabel(it.date);
+  $('amt').oninput(); renderChips(); updateEditUI(); renderLedger();
+  $('entry').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function cancelEdit(){
+  if(!editId) return; editId=null;
+  $('amt').value=''; $('note').value=''; $('date').value=todayStr(); $('dateTxt').textContent=dateLabel($('date').value); $('amt').oninput();
+  updateEditUI(); renderLedger();
+}
 function renderLedger(){
   const items=[...itemsOf(S.cur)].sort((a,b)=> a.date<b.date?1:a.date>b.date?-1:(b.ts||0)-(a.ts||0));
-  $('ledgerMeta').textContent = items.length? items.length+' giao dịch':'';
+  $('ledgerMeta').textContent = items.length? items.length+' giao dịch · chạm để sửa':'';
   if(!items.length){
     const anyData=Object.values(S.months).some(a=>a.length);
     $('ledger').innerHTML='<div class="empty"><strong>Tháng này chưa có giao dịch.</strong><span>Ghi khoản đầu tiên ở ô phía trên — chọn Chi/Thu, gõ số tiền, chọn danh mục rồi bấm Lưu lại.</span>'+(anyData?'':'<button class="btn" type="button" id="loadSample">Xem thử với dữ liệu mẫu</button><span class="hint">Dữ liệu mẫu có nhãn MẪU, xóa được một lần trong Cài đặt.</span>')+'</div>';
@@ -494,7 +516,7 @@ function renderLedger(){
       g.map(it=>{
         const refund=it.type==='chi'&&it.amount<0, plus=it.type==='thu'||refund;
         const sub=[it.note,it.who].filter(Boolean).join(' · ');
-        return '<div class="tx"><div class="what"><div class="cat">'+esc(catName(it.cat))+(it.sample?'<span class="tag">mẫu</span>':'')+(refund?'<span class="tag refund">hoàn tiền</span>':'')+(notCounted(it)?'<span class="tag">không tính</span>':'')+'</div>'+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'</div><div class="amt '+(plus?'inc':'exp')+'">'+(plus?'+':'−')+fmt(Math.abs(it.amount))+'</div><button class="del" type="button" data-del="'+esc(it.id)+'" aria-label="Xóa giao dịch">×</button></div>';
+        return '<div class="tx'+(editId===it.id?' editing':'')+'"'+(refund?'':' data-edit="'+esc(it.id)+'" tabindex="0"')+'><div class="what"><div class="cat">'+esc(catName(it.cat))+(it.sample?'<span class="tag">mẫu</span>':'')+(refund?'<span class="tag refund">hoàn tiền</span>':'')+(notCounted(it)?'<span class="tag">không tính</span>':'')+'</div>'+(sub?'<div class="note">'+esc(sub)+'</div>':'')+'</div><div class="amt '+(plus?'inc':'exp')+'">'+(plus?'+':'−')+fmt(Math.abs(it.amount))+'</div><button class="del" type="button" data-del="'+esc(it.id)+'" aria-label="Xóa giao dịch">×</button></div>';
       }).join('')+'</div>';
   }).join('');
 }
@@ -595,6 +617,18 @@ $('entry').onsubmit=e=>{
   if(isNaN(n)){ h.textContent='Nhập số tiền, ví dụ 45k hoặc 1,2tr'; h.classList.add('err'); $('amt').focus(); return; }
   if(!S.cat){ h.textContent='Chọn một danh mục'; h.classList.add('err'); return; }
   const date=$('date').value||todayStr(), ym=date.slice(0,7);
+  if(editId){
+    const f=findItem(editId);
+    if(!f){ cancelEdit(); toast('Giao dịch này không còn nữa'); return; }
+    const old=f.it; old.type=S.type; old.amount=n; old.cat=S.cat; old.date=date; old.note=$('note').value.trim(); delete old.sample;
+    if(f.ym!==ym){ S.months[f.ym]=S.months[f.ym].filter(i=>i.id!==old.id); (S.months[ym]=S.months[ym]||[]).push(old); }
+    delete S.sync.synced[old.id]; old.dirty=Date.now();   // báo cho đồng bộ gửi lại bản đã sửa
+    const moved=ym!==S.cur; S.cur=ym; editId=null;
+    $('amt').value=''; $('note').value=''; $('amt').oninput(); updateEditUI();
+    save(); render();
+    toast('Đã cập nhật '+(old.type==='thu'?'thu ':'chi ')+fmt(n)+' · '+catName(old.cat)+(moved?' (sang tháng '+Number(ym.slice(5))+')':''));
+    return;
+  }
   const it={id:uid(),type:S.type,amount:n,cat:S.cat,date,note:$('note').value.trim(),ts:Date.now()};
   (S.months[ym]=S.months[ym]||[]).push(it); save();
   const moved = ym!==S.cur; S.cur=ym;
@@ -604,9 +638,12 @@ $('entry').onsubmit=e=>{
 };
 $('ledger').onclick=e=>{
   if(e.target.id==='loadSample'){ loadSample(); return; }
-  const b=e.target.closest('[data-del]'); if(!b) return;
-  twoStep(b,()=>{ S.months[S.cur]=itemsOf(S.cur).filter(i=>i.id!==b.dataset.del); save(); render(); toast('Đã xóa giao dịch'); });
+  const b=e.target.closest('[data-del]');
+  if(!b){ const r=e.target.closest('[data-edit]'); if(r) startEdit(r.dataset.edit); return; }
+  twoStep(b,()=>{ if(editId===b.dataset.del) cancelEdit(); S.months[S.cur]=itemsOf(S.cur).filter(i=>i.id!==b.dataset.del); save(); render(); toast('Đã xóa giao dịch'); });
 };
+$('ledger').onkeydown=e=>{ if(e.key==='Enter'&&e.target.matches('[data-edit]')){ e.preventDefault(); startEdit(e.target.dataset.edit); } };
+$('editCancel').onclick=cancelEdit;
 $('setRows').addEventListener('change',e=>{
   const row=e.target.closest('.setrow'); if(!row) return;
   const c=catById(row.dataset.id); if(!c) return;
@@ -664,7 +701,7 @@ $('restoreFile').onchange=async e=>{
 $('restoreNo').onclick=()=>{ pendingRestore=null; $('restoreConfirm').hidden=true; };
 $('restoreYes').onclick=()=>{
   if(!pendingRestore) return;
-  S.settings=pendingRestore.settings; S.months=pendingRestore.months; pendingRestore=null;
+  editId=null; updateEditUI(); S.settings=pendingRestore.settings; S.months=pendingRestore.months; pendingRestore=null;
   $('restoreConfirm').hidden=true; save(); render(); toast('Đã khôi phục dữ liệu');
 };
 
@@ -895,13 +932,25 @@ function catByNameOrNew(name,type,jar){
   return c;
 }
 function mergePulled(rows,dedupe){
-  const sy=S.sync; let added=0, removed=0;
+  const sy=S.sync; let added=0, removed=0, changed=0;
   const local=new Map(), unsynced={};
   for(const ym in S.months) for(const it of S.months[ym]){ local.set(it.id,{it,ym}); if(!sy.synced[it.id]&&!it.sample){ const k=itemKey(Object.assign({},it,{catName:catName(it.cat)})); (unsynced[k]=unsynced[k]||[]).push(it); } }
   for(const r of rows){
     const have=local.get(r.id);
     if(r.deleted){ if(have){ S.months[have.ym]=S.months[have.ym].filter(i=>i.id!==r.id); local.delete(r.id); removed++; } delete sy.synced[r.id]; continue; }
-    if(have){ sy.synced[r.id]=1; continue; }
+    if(have){
+      const it=have.it;
+      if(it.dirty) continue;                                   // đã sửa trên máy này, chưa gửi: giữ bản của máy này
+      if(!sy.synced[r.id]){ sy.synced[r.id]=1; continue; }
+      const ym2=String(r.date).slice(0,7), catDiff=r.catName&&norm(r.catName)!==norm(catName(it.cat));
+      if(/^\d{4}-\d{2}$/.test(ym2) && (it.date!==r.date||it.type!==r.type||it.amount!==r.amount||(it.note||'')!==(r.note||'')||catDiff)){
+        if(catDiff||it.type!==r.type) it.cat=catByNameOrNew(r.catName,r.type,r.jar).id;
+        it.type=r.type; it.amount=r.amount; it.note=r.note||''; it.date=r.date;
+        if(have.ym!==ym2){ S.months[have.ym]=S.months[have.ym].filter(i=>i.id!==it.id); (S.months[ym2]=S.months[ym2]||[]).push(it); have.ym=ym2; }
+        changed++;
+      }
+      continue;
+    }
     const k=itemKey(r), dupList=dedupe?unsynced[k]:null;
     if(dupList&&dupList.length){ const mine=dupList.shift(); local.delete(mine.id); mine.id=r.id; local.set(r.id,{it:mine,ym:mine.date.slice(0,7)}); sy.synced[r.id]=1; continue; }  // cùng nội dung đã có trên máy (nhập Excel 2 nơi): gộp, không đúp
     const c=catByNameOrNew(r.catName,r.type,r.jar), ym=String(r.date).slice(0,7);
@@ -910,14 +959,14 @@ function mergePulled(rows,dedupe){
     if(r.who) it.who=r.who; if(r.pay) it.pay=r.pay; if(r.memo) it.memo=r.memo;
     (S.months[ym]=S.months[ym]||[]).push(it); local.set(r.id,{it,ym}); sy.synced[r.id]=1; added++;
   }
-  return {added,removed};
+  return {added,removed,changed};
 }
 async function syncNow(manual){
   const sy=S.sync; if(!sy.url) return;
   if(syncBusy){ syncAgain=true; return; }
   if(!navigator.onLine){ if(manual) toast('Đang offline — có mạng sẽ tự đồng bộ'); return; }
   syncBusy=true; sy.err=''; renderSync('Đang đồng bộ…');
-  let added=0, removed=0, sent=0;
+  let added=0, removed=0, changed=0, sent=0;
   try{
     const apply=(j,dedupe)=>{
       sy.lastPull=j.now;
@@ -929,18 +978,18 @@ async function syncNow(manual){
           sy.settingsHash=JSON.stringify(rc); sy.settingsUpd=j.settings.upd;
         }catch(e){}
       }
-      const m=mergePulled(j.items||[],dedupe); added+=m.added; removed+=m.removed;
+      const m=mergePulled(j.items||[],dedupe); added+=m.added; removed+=m.removed; changed+=m.changed;
     };
     if(!sy.lastPull){ apply(await syncCall({items:[],since:0,sinceSettings:0}),true); }   // lần đầu: kéo về trước, gộp trùng, rồi mới gửi
     const local=new Map(); for(const ym in S.months) for(const it of S.months[ym]) if(!it.sample) local.set(it.id,it);
-    const push=[]; for(const [id,it] of local) if(!sy.synced[id]) push.push(itemWire(it));
+    const push=[], dirtyAt={}; for(const [id,it] of local) if(!sy.synced[id]){ push.push(itemWire(it)); dirtyAt[id]=it.dirty||0; }
     for(const id of Object.keys(sy.synced)) if(!local.has(id)) push.push({id,deleted:1});
     const catsJson=JSON.stringify(cats()); let setBody=catsJson!==sy.settingsHash?{json:JSON.stringify({cats:cats()})}:null;
     let first=true;
     do{
       const chunk=push.splice(0,250);
       const j=await syncCall({items:chunk,since:sy.lastPull,sinceSettings:sy.settingsUpd,settings:first?setBody:null});
-      for(const w of chunk){ if(w.deleted) delete sy.synced[w.id]; else sy.synced[w.id]=1; }
+      for(const w of chunk){ if(w.deleted) delete sy.synced[w.id]; else { sy.synced[w.id]=1; const li=local.get(w.id); if(li&&(li.dirty||0)===dirtyAt[w.id]) delete li.dirty; } }
       sent+=chunk.length;
       if(first&&setBody){ sy.settingsHash=catsJson; sy.settingsUpd=j.settingsUpd; }
       first=false; apply(j,false);
@@ -948,7 +997,7 @@ async function syncNow(manual){
     if(!setBody&&JSON.stringify(cats())!==sy.settingsHash) syncAgain=true;   // vừa nhận thêm danh mục mới về máy: gửi lại cài đặt ở lượt sau
     sy.lastOk=Date.now(); sy.err='';
     save(true); render();
-    if(manual||added||removed) toast('Đã đồng bộ'+(sent?' · gửi '+sent:'')+(added?' · nhận '+added:'')+(removed?' · xóa '+removed:''));
+    if(manual||added||removed||changed) toast('Đã đồng bộ'+(sent?' · gửi '+sent:'')+(added?' · nhận '+added:'')+(changed?' · cập nhật '+changed:'')+(removed?' · xóa '+removed:''));
   }catch(e){
     sy.err=(e&&e.message)||'Không đồng bộ được'; save(true); renderStatus();
     if(manual) toast(sy.err);
