@@ -349,7 +349,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const shiftYm = (ym,k) => { const [y,m]=ym.split('-').map(Number); return ymOf(new Date(y,m-1+k,1)); };
 const WD = ['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
-const APP_VER = '9 (15/11)';
+const APP_VER = '10 (15/11)';
 const HINT = '';
 
 function parseAmt(raw){
@@ -915,7 +915,7 @@ async function syncCall(body){
     let j; try{ j=await res.json(); }catch(e){ throw new Error('Đường link không đúng hoặc chưa triển khai là “Bất kỳ ai” — kiểm tra lại link Web app'); }
     if(!j.ok){ const m={'chua-doi-ma':'Chưa đổi mã bí mật trong script','sai-ma':'Sai mã bí mật','json':'Dữ liệu gửi lên bị lỗi'}; throw new Error(m[j.error]||('Lỗi: '+j.error)); }
     return j;
-  }catch(e){ if(e&&e.name==='AbortError') throw new Error('Mạng quá chậm, thử lại sau'); throw e; }
+  }catch(e){ if(e&&e.name==='AbortError') throw new Error('Mạng quá chậm, thử lại sau'); if(e&&e.name==='TypeError') throw new Error('Không gọi được tới Google — kiểm tra mạng, link /exec, hoặc tắt tiện ích chặn quảng cáo rồi thử lại ('+e.message+')'); throw e; }
   finally{ clearTimeout(to); }
 }
 const itemKey=it=>[it.date,it.type,it.amount,norm(it.catName||''),norm(it.note||'')].join('|');
@@ -1006,10 +1006,11 @@ async function syncNow(manual){
     if(syncAgain){ syncAgain=false; scheduleSync(); }
   }
 }
+let connErr='';
 function renderSync(busyMsg){
   const sy=S.sync, on=!!sy.url, st=$('syncStat'); if(!st) return;
   $('syncForm').hidden=on; $('syncOn').hidden=!on;
-  if(!on){ st.className='syncstat'; st.textContent='Chưa kết nối — dữ liệu chỉ nằm trên máy này.'; return; }
+  if(!on){ if(connErr){ st.className='syncstat bad'; st.textContent='Chưa kết nối được: '+connErr; } else { st.className='syncstat'; st.textContent='Chưa kết nối — dữ liệu chỉ nằm trên máy này.'; } return; }
   const t=sy.lastOk?new Date(sy.lastOk).toLocaleString('vi-VN'):'chưa lần nào';
   if(busyMsg||syncBusy){ st.className='syncstat'; st.textContent=busyMsg||'Đang đồng bộ…'; }
   else if(sy.err){ st.className='syncstat bad'; st.textContent='Đồng bộ lỗi: '+sy.err+' (dữ liệu vẫn an toàn trên máy, sẽ thử lại)'; }
@@ -1019,9 +1020,10 @@ $('syncConnect').onclick=async()=>{
   const url=$('syncUrl').value.trim(), tok=$('syncTok').value.trim();
   if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/\s]+\/exec$/.test(url)){ toast('Link chưa đúng — phải dạng https://script.google.com/macros/s/…/exec'); return; }
   if(!tok){ toast('Nhập mã bí mật'); return; }
-  S.sync=Object.assign(SYNC0(),{url,token:tok}); save(true); $('syncTok').value='';
+  connErr=''; S.sync=Object.assign(SYNC0(),{url,token:tok}); save(true);
   await syncNow(true);
-  if(S.sync.err){ const m=S.sync.err; S.sync=SYNC0(); save(true); renderSync(); toast('Chưa kết nối được: '+m); }
+  if(S.sync.err){ const m=S.sync.err; S.sync=SYNC0(); save(true); connErr=m; renderSync(); toast('Chưa kết nối được: '+m); }
+  else { connErr=''; $('syncTok').value=''; }   // thất bại thì giữ nguyên ô nhập để sửa lại, không phải gõ lại từ đầu
 };
 $('syncNowBtn').onclick=()=>syncNow(true);
 $('syncOff').onclick=()=>{ if(!confirm('Ngắt kết nối? Dữ liệu trên máy và trên Google Sheet vẫn giữ nguyên.')) return; S.sync=SYNC0(); save(true); renderSync(); toast('Đã ngắt đồng bộ'); };

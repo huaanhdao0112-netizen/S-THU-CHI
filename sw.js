@@ -1,7 +1,7 @@
 // Sổ Thu Chi — chạy offline + tự cập nhật.
 // Có mạng: luôn lấy trang mới nhất từ web. Mất mạng (hoặc mạng quá chậm): dùng bản đã lưu trên máy.
 // Khi sửa file, đổi số phiên bản dưới đây.
-const CACHE = 'so-thu-chi-v9';
+const CACHE = 'so-thu-chi-v10';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './xlsx.full.min.js',
   './jszip.min.js', './template.xlsx',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
