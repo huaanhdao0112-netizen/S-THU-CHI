@@ -1,0 +1,39 @@
+ĐỒNG BỘ ĐIỆN THOẠI <-> WEB BẰNG GOOGLE SHEETS
+Làm 1 lần, mất khoảng 10 phút. Sau đó nhập ở đâu cũng tự thấy ở mọi nơi.
+
+PHẦN 1 - TẠO "KHO DỮ LIỆU" TRÊN GOOGLE (làm trên máy tính)
+1. Vào sheets.google.com -> tạo Google Sheet trống, đặt tên "Sổ thu chi - dữ liệu".
+2. Menu: Tiện ích mở rộng (Extensions) -> Apps Script.
+3. Xóa hết code mẫu. Mở file Code.gs (cùng thư mục này), copy toàn bộ, dán vào.
+4. Sửa dòng đầu:
+      const MA_BI_MAT = 'DOI-MA-BI-MAT-NAY';
+   thành mã của bạn, ví dụ 'ricons-2026-xyz789' (dài, khó đoán, không dùng mật khẩu thật).
+   Nếu để nguyên, script sẽ từ chối chạy.
+5. Bấm biểu tượng đĩa mềm (Lưu).
+6. Bấm Triển khai (Deploy) -> Tùy chọn triển khai mới (New deployment):
+      - Loại: Ứng dụng web (Web app)
+      - Thực thi bằng: Tôi (Me)
+      - Ai có quyền truy cập: Bất kỳ ai (Anyone)
+   Bấm Triển khai.
+7. Google hỏi cấp quyền -> Cho phép. Nếu hiện "Google chưa xác minh ứng dụng này":
+   bấm Nâng cao (Advanced) -> "Đi tới ... (không an toàn)" -> Cho phép.
+   (Bình thường: script do chính bạn viết, chạy trên tài khoản bạn.)
+8. Copy "URL ứng dụng web", dạng:
+      https://script.google.com/macros/s/AKfy.../exec
+   Phải kết thúc bằng /exec.
+
+PHẦN 2 - KẾT NỐI APP (làm trên TỪNG thiết bị: điện thoại, web)
+1. Mở app -> mục "Đồng bộ nhiều thiết bị".
+2. Dán URL /exec + mã bí mật (đúng mã ở bước 4) -> bấm "Kết nối".
+3. Thiết bị nào cũng dùng cùng 1 URL và cùng 1 mã.
+
+LƯU Ý
+- Thiết bị đã có dữ liệu: kết nối trước ở máy có dữ liệu đầy đủ nhất, rồi mới kết nối máy còn lại.
+- Khoản trùng hệt nhau (cùng ngày, số tiền, danh mục, ghi chú) khi kết nối lần đầu sẽ được gộp, không bị đúp.
+- Xóa 1 khoản ở máy này -> máy kia mất khoản đó sau lần đồng bộ kế tiếp.
+- Nếu 2 máy cùng sửa danh mục cùng lúc, bản lưu sau thắng.
+- "Khôi phục từ file sao lưu" khi đang bật đồng bộ sẽ xóa khoản tương ứng trên máy khác. Hãy tắt đồng bộ trước.
+- Ai có URL + mã bí mật đều đọc/ghi được dữ liệu. Không chia sẻ cho người ngoài.
+- Muốn đổi mã: sửa MA_BI_MAT -> Triển khai -> Quản lý triển khai -> Sửa -> Phiên bản mới.
+  Sau đó nhập mã mới ở từng thiết bị.
+- Mất mạng: app vẫn nhập bình thường, có mạng sẽ tự đẩy lên.

@@ -101,6 +101,11 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .tag.refund{color:var(--income);border-color:var(--income)}
 .check{display:flex;gap:8px;align-items:flex-start;font-size:13.5px}
+.syncin{display:flex;flex-direction:column;gap:4px}
+.syncin input{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 11px;width:100%;min-width:0}
+.syncstat{font-size:13px;border-radius:8px;padding:9px 12px;background:var(--sunk)}
+.syncstat.ok{background:var(--income-soft);color:var(--income)}
+.syncstat.bad{background:var(--expense-soft);color:var(--expense)}
 .check input{margin-top:3px;width:18px;height:18px}
 
 .main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:28px;align-items:start}
@@ -247,6 +252,24 @@ details.panel[open] summary::after{content:"－"}
     </div>
   </div>
 
+  <details class="panel" id="syncBox">
+    <summary>Đồng bộ nhiều thiết bị (Google Sheets)</summary>
+    <div class="setbody">
+      <div class="syncstat" id="syncStat">Chưa kết nối — dữ liệu chỉ nằm trên máy này.</div>
+      <div id="syncForm" class="setbody" style="padding:0">
+        <label class="syncin"><span class="label">Đường link Web app</span><input id="syncUrl" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec"></label>
+        <label class="syncin"><span class="label">Mã bí mật</span><input id="syncTok" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Mã anh đặt trong script"></label>
+        <div class="row-btns" style="margin-top:0"><button class="btn primary" type="button" id="syncConnect">Kết nối</button></div>
+        <div class="hint">Cách tạo link và mã: xem file HUONG-DAN-DONG-BO.txt. Điện thoại, máy tính… nhập cùng một link và một mã là dùng chung dữ liệu.</div>
+      </div>
+      <div id="syncOn" class="row-btns" style="margin-top:0" hidden>
+        <button class="btn primary" type="button" id="syncNowBtn">Đồng bộ ngay</button>
+        <button class="btn" type="button" id="syncOff">Ngắt kết nối</button>
+      </div>
+      <div class="hint">Sau khi kết nối, khoản mới ghi ở máy nào cũng tự lên Google Sheet của anh và về các máy khác. Mất mạng vẫn ghi được, có mạng lại sẽ tự gửi.</div>
+    </div>
+  </details>
+
   <details class="panel" id="backupBox">
     <summary>Nhập Excel · Sao lưu · Khôi phục</summary>
     <div class="setbody">
@@ -315,7 +338,7 @@ const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const shiftYm = (ym,k) => { const [y,m]=ym.split('-').map(Number); return ymOf(new Date(y,m-1+k,1)); };
 const WD = ['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
-const APP_VER = '5 (15/11)';
+const APP_VER = '6 (15/11)';
 const HINT = 'Gõ tắt: 45k = 45.000 · 1,2tr hoặc 1tr2 = 1.200.000 · số dưới 1.000 tự hiểu là nghìn';
 
 function parseAmt(raw){
@@ -357,17 +380,19 @@ const KINDS=['Thu nhập','Rút quỹ','Không tính'];
 
 /* ---------- state & storage (chỉ trên máy) ---------- */
 const KEY='so-thu-chi-v1';
-const S = { settings:{cats:DEFAULT_CATS.map(c=>({...c}))}, months:{}, lastBackup:0, cur:ymOf(new Date()), type:'chi', cat:'an', storageOk:true };
+const SYNC0 = () => ({url:'',token:'',lastPull:0,settingsUpd:0,settingsHash:'',synced:{},lastOk:0,err:''});
+const S = { settings:{cats:DEFAULT_CATS.map(c=>({...c}))}, months:{}, lastBackup:0, cur:ymOf(new Date()), type:'chi', cat:'an', storageOk:true, sync:SYNC0() };
 function load(){
   try{
     const raw=localStorage.getItem(KEY);
-    if(raw){ const o=JSON.parse(raw); if(o.settings&&Array.isArray(o.settings.cats)) S.settings=o.settings; if(o.months&&typeof o.months==='object') S.months=o.months; S.lastBackup=o.lastBackup||0; }
+    if(raw){ const o=JSON.parse(raw); if(o.settings&&Array.isArray(o.settings.cats)) S.settings=o.settings; if(o.months&&typeof o.months==='object') S.months=o.months; S.lastBackup=o.lastBackup||0; if(o.sync&&typeof o.sync==='object') S.sync=Object.assign(SYNC0(),o.sync); }
   }catch(e){ S.storageOk=false; }
 }
-function save(){
-  try{ localStorage.setItem(KEY, JSON.stringify({v:1,settings:S.settings,months:S.months,lastBackup:S.lastBackup})); S.storageOk=true; }
+function save(noSync){
+  try{ localStorage.setItem(KEY, JSON.stringify({v:1,settings:S.settings,months:S.months,lastBackup:S.lastBackup,sync:S.sync})); S.storageOk=true; }
   catch(e){ S.storageOk=false; toast('Không lưu được — bộ nhớ trình duyệt bị chặn hoặc đầy'); }
   renderStatus();
+  if(noSync!==true) scheduleSync();
 }
 function renderStatus(){
   const dot=$('dot'), txt=$('statusTxt');
@@ -376,7 +401,9 @@ function renderStatus(){
   const days=S.lastBackup? Math.floor((Date.now()-S.lastBackup)/864e5) : null;
   const b = days===null ? 'chưa sao lưu lần nào' : days===0 ? 'đã sao lưu hôm nay' : 'sao lưu cách đây '+days+' ngày';
   dot.className='dot '+((n>0&&(days===null||days>30))?'busy':'ok');
-  txt.textContent=(navigator.onLine?'':'Đang offline · ')+'Đã lưu trên máy · '+n+' giao dịch · '+b+' · Phiên bản '+APP_VER;
+  const sy = S.sync.url ? (S.sync.err ? ' · Đồng bộ lỗi' : S.sync.lastOk ? ' · Đồng bộ lúc '+new Date(S.sync.lastOk).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}) : ' · Đang đồng bộ…') : '';
+  txt.textContent=(navigator.onLine?'':'Đang offline · ')+'Đã lưu trên máy · '+n+' giao dịch · '+b+sy+' · Phiên bản '+APP_VER;
+  renderSync();
   $('backupInfo').textContent = S.lastBackup ? 'Lần sao lưu gần nhất: '+new Date(S.lastBackup).toLocaleString('vi-VN') : 'Chưa sao lưu lần nào.';
 }
 
@@ -602,7 +629,7 @@ $('restoreFile').onchange=async e=>{
     if(o.app!=='so-thu-chi'||!o.settings||!o.months) throw 0;
     const n=Object.values(o.months).reduce((s,a)=>s+(Array.isArray(a)?a.length:0),0);
     pendingRestore=o;
-    $('restoreMsg').textContent='File sao lưu ngày '+new Date(o.exportedAt).toLocaleDateString('vi-VN')+' có '+n+' giao dịch. Dữ liệu hiện tại trên máy sẽ bị thay bằng dữ liệu trong file.';
+    $('restoreMsg').textContent='File sao lưu ngày '+new Date(o.exportedAt).toLocaleDateString('vi-VN')+' có '+n+' giao dịch. Dữ liệu hiện tại trên máy sẽ bị thay bằng dữ liệu trong file.'+(S.sync.url?' Đang bật đồng bộ: giao dịch không có trong file cũng sẽ bị xóa trên Google Sheet và các máy khác.':'');
     $('restoreConfirm').hidden=false;
   }catch(err){ toast('File không đúng định dạng sao lưu của Sổ Thu Chi'); }
 };
@@ -708,6 +735,7 @@ $('exportBtn').onclick=async()=>{
 /* ---------- nhập từ Excel (gộp, bỏ trùng) ---------- */
 const DEFAULT_IDS=new Set(DEFAULT_CATS.map(c=>c.id));
 const norm=s=>String(s==null?'':s).replace(/\s+/g,' ').trim().toLowerCase();
+function hash36(str){ let a=0x811c9dc5, b=0x1b873593; for(let i=0;i<str.length;i++){ const c=str.charCodeAt(i); a=Math.imul(a^c,16777619)>>>0; b=Math.imul(b+c,2246822519)>>>0; b^=b>>>13; } return a.toString(36)+b.toString(36); }
 function toNum(v){
   if(typeof v==='number') return v;
   if(v==null) return NaN;
@@ -768,7 +796,7 @@ function planImport(p){
   const key=(d,t,a,cn,n)=>[d,t,a,norm(cn),norm(n)].join('|');
   const have={}; for(const ym in S.months) for(const it of S.months[ym]){ const k=key(it.date,it.type,it.amount,catName(it.cat),it.note); have[k]=(have[k]||0)+1; }
   const seen={}, add=[]; let dup=0;
-  for(const r of p.rows){ const k=key(r.date,r.type,r.amount,r.catName,r.note); seen[k]=(seen[k]||0)+1; if(seen[k]<=(have[k]||0)) dup++; else add.push(r); }
+  for(const r of p.rows){ const k=key(r.date,r.type,r.amount,r.catName,r.note); seen[k]=(seen[k]||0)+1; if(seen[k]<=(have[k]||0)) dup++; else add.push(Object.assign({},r,{xid:'x'+hash36(k+'#'+seen[k])})); }
   return {newCats,add,dup};
 }
 let pendingImport=null;
@@ -797,7 +825,7 @@ $('importYes').onclick=()=>{
   for(const nc of plan.newCats) S.settings.cats.push({id:'c'+uid(),name:nc.name,type:nc.type,jar:nc.jar||'',group:nc.group||'',kind:nc.kind||'',budget:nc.budget||0});
   for(const fc of pendingFileCats){ const ex=byName(fc.name); if(!ex) continue; if(fc.jar&&!ex.jar) ex.jar=fc.jar; if(fc.group&&!ex.group) ex.group=fc.group; if(fc.kind&&!ex.kind) ex.kind=fc.kind; }
   const base=Date.now(); let last='';
-  plan.add.forEach((r,i)=>{ const ym=r.date.slice(0,7); (S.months[ym]=S.months[ym]||[]).push({id:uid(),type:r.type,amount:r.amount,cat:byName(r.catName).id,date:r.date,note:r.note,who:r.who,pay:r.pay,memo:r.memo,ts:base+i,src:'xlsx'}); if(ym>last) last=ym; });
+  plan.add.forEach((r,i)=>{ const ym=r.date.slice(0,7); (S.months[ym]=S.months[ym]||[]).push({id:r.xid||uid(),type:r.type,amount:r.amount,cat:byName(r.catName).id,date:r.date,note:r.note,who:r.who,pay:r.pay,memo:r.memo,ts:base+i,src:'xlsx'}); if(ym>last) last=ym; });
   if(!$('dropDefWrap').hidden&&$('dropDef').checked){
     const used=new Set(); for(const ym in S.months) for(const it of S.months[ym]) used.add(it.cat);
     const inFile=new Set(pendingFileCats.map(fc=>norm(fc.name)));
@@ -808,8 +836,124 @@ $('importYes').onclick=()=>{
   save(); render(); toast('Đã nhập '+plan.add.length+' giao dịch');
 };
 
+
+/* ---------- đồng bộ qua Google Sheets (Apps Script) ---------- */
+let syncBusy=false, syncTimer=null, syncAgain=false;
+const SYNC_TIMEOUT=30000;
+function scheduleSync(){ if(!S.sync.url) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>syncNow(false),2500); }
+function itemWire(it){ const c=catById(it.cat); return {id:it.id,date:it.date,type:it.type,amount:it.amount,cat:it.cat,catName:c?c.name:'',jar:c&&c.jar||'',note:it.note||'',who:it.who||'',pay:it.pay||'',memo:it.memo||'',ts:it.ts||0}; }
+async function syncCall(body){
+  const ctl=new AbortController(), to=setTimeout(()=>ctl.abort(),SYNC_TIMEOUT);
+  try{
+    const res=await fetch(S.sync.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:S.sync.token},body)),signal:ctl.signal,redirect:'follow'});
+    if(!res.ok) throw new Error('Máy chủ trả lỗi '+res.status);
+    let j; try{ j=await res.json(); }catch(e){ throw new Error('Đường link không đúng hoặc chưa triển khai là “Bất kỳ ai” — kiểm tra lại link Web app'); }
+    if(!j.ok){ const m={'chua-doi-ma':'Chưa đổi mã bí mật trong script','sai-ma':'Sai mã bí mật','json':'Dữ liệu gửi lên bị lỗi'}; throw new Error(m[j.error]||('Lỗi: '+j.error)); }
+    return j;
+  }catch(e){ if(e&&e.name==='AbortError') throw new Error('Mạng quá chậm, thử lại sau'); throw e; }
+  finally{ clearTimeout(to); }
+}
+const itemKey=it=>[it.date,it.type,it.amount,norm(it.catName||''),norm(it.note||'')].join('|');
+function adoptCats(remote, union){
+  const oldName={}; cats().forEach(c=>oldName[c.id]=norm(c.name));
+  const merged=remote.map(c=>Object.assign({},c)), byName=new Map(merged.map(c=>[norm(c.name),c]));
+  if(union) for(const c of cats()) if(!byName.has(norm(c.name))){ merged.push(c); byName.set(norm(c.name),c); }
+  for(const ym in S.months) for(const it of S.months[ym]){ const nm=oldName[it.cat], t=nm&&byName.get(nm); if(t) it.cat=t.id; }
+  S.settings.cats=merged;
+}
+function catByNameOrNew(name,type,jar){
+  let c=cats().find(x=>norm(x.name)===norm(name));
+  if(!c){ c={id:'c'+uid(),name:name||(type==='thu'?'Thu khác':'Chi khác'),type,budget:0}; if(jar) c.jar=jar; S.settings.cats=[...cats(),c]; }
+  return c;
+}
+function mergePulled(rows,dedupe){
+  const sy=S.sync; let added=0, removed=0;
+  const local=new Map(), unsynced={};
+  for(const ym in S.months) for(const it of S.months[ym]){ local.set(it.id,{it,ym}); if(!sy.synced[it.id]&&!it.sample){ const k=itemKey(Object.assign({},it,{catName:catName(it.cat)})); (unsynced[k]=unsynced[k]||[]).push(it); } }
+  for(const r of rows){
+    const have=local.get(r.id);
+    if(r.deleted){ if(have){ S.months[have.ym]=S.months[have.ym].filter(i=>i.id!==r.id); local.delete(r.id); removed++; } delete sy.synced[r.id]; continue; }
+    if(have){ sy.synced[r.id]=1; continue; }
+    const k=itemKey(r), dupList=dedupe?unsynced[k]:null;
+    if(dupList&&dupList.length){ const mine=dupList.shift(); local.delete(mine.id); mine.id=r.id; local.set(r.id,{it:mine,ym:mine.date.slice(0,7)}); sy.synced[r.id]=1; continue; }  // cùng nội dung đã có trên máy (nhập Excel 2 nơi): gộp, không đúp
+    const c=catByNameOrNew(r.catName,r.type,r.jar), ym=String(r.date).slice(0,7);
+    if(!/^\d{4}-\d{2}$/.test(ym)) continue;
+    const it={id:r.id,type:r.type,amount:r.amount,cat:c.id,date:r.date,note:r.note||'',ts:r.ts||0,src:'sync'};
+    if(r.who) it.who=r.who; if(r.pay) it.pay=r.pay; if(r.memo) it.memo=r.memo;
+    (S.months[ym]=S.months[ym]||[]).push(it); local.set(r.id,{it,ym}); sy.synced[r.id]=1; added++;
+  }
+  return {added,removed};
+}
+async function syncNow(manual){
+  const sy=S.sync; if(!sy.url) return;
+  if(syncBusy){ syncAgain=true; return; }
+  if(!navigator.onLine){ if(manual) toast('Đang offline — có mạng sẽ tự đồng bộ'); return; }
+  syncBusy=true; sy.err=''; renderSync('Đang đồng bộ…');
+  let added=0, removed=0, sent=0;
+  try{
+    const apply=(j,dedupe)=>{
+      sy.lastPull=j.now;
+      if(j.settings){
+        try{
+          const rc=JSON.parse(j.settings.json).cats||[], mine=JSON.stringify(cats());
+          const same=mine===sy.settingsHash, untouched=mine===JSON.stringify(DEFAULT_CATS);
+          adoptCats(rc, !same&&!untouched);   // máy mới còn danh mục mặc định: lấy theo Sheet, không trộn thêm
+          sy.settingsHash=JSON.stringify(rc); sy.settingsUpd=j.settings.upd;
+        }catch(e){}
+      }
+      const m=mergePulled(j.items||[],dedupe); added+=m.added; removed+=m.removed;
+    };
+    if(!sy.lastPull){ apply(await syncCall({items:[],since:0,sinceSettings:0}),true); }   // lần đầu: kéo về trước, gộp trùng, rồi mới gửi
+    const local=new Map(); for(const ym in S.months) for(const it of S.months[ym]) if(!it.sample) local.set(it.id,it);
+    const push=[]; for(const [id,it] of local) if(!sy.synced[id]) push.push(itemWire(it));
+    for(const id of Object.keys(sy.synced)) if(!local.has(id)) push.push({id,deleted:1});
+    const catsJson=JSON.stringify(cats()); let setBody=catsJson!==sy.settingsHash?{json:JSON.stringify({cats:cats()})}:null;
+    let first=true;
+    do{
+      const chunk=push.splice(0,250);
+      const j=await syncCall({items:chunk,since:sy.lastPull,sinceSettings:sy.settingsUpd,settings:first?setBody:null});
+      for(const w of chunk){ if(w.deleted) delete sy.synced[w.id]; else sy.synced[w.id]=1; }
+      sent+=chunk.length;
+      if(first&&setBody){ sy.settingsHash=catsJson; sy.settingsUpd=j.settingsUpd; }
+      first=false; apply(j,false);
+    }while(push.length);
+    if(!setBody&&JSON.stringify(cats())!==sy.settingsHash) syncAgain=true;   // vừa nhận thêm danh mục mới về máy: gửi lại cài đặt ở lượt sau
+    sy.lastOk=Date.now(); sy.err='';
+    save(true); render();
+    if(manual||added||removed) toast('Đã đồng bộ'+(sent?' · gửi '+sent:'')+(added?' · nhận '+added:'')+(removed?' · xóa '+removed:''));
+  }catch(e){
+    sy.err=(e&&e.message)||'Không đồng bộ được'; save(true); renderStatus();
+    if(manual) toast(sy.err);
+  }finally{
+    syncBusy=false; renderSync();
+    if(syncAgain){ syncAgain=false; scheduleSync(); }
+  }
+}
+function renderSync(busyMsg){
+  const sy=S.sync, on=!!sy.url, st=$('syncStat'); if(!st) return;
+  $('syncForm').hidden=on; $('syncOn').hidden=!on;
+  if(!on){ st.className='syncstat'; st.textContent='Chưa kết nối — dữ liệu chỉ nằm trên máy này.'; return; }
+  const t=sy.lastOk?new Date(sy.lastOk).toLocaleString('vi-VN'):'chưa lần nào';
+  if(busyMsg||syncBusy){ st.className='syncstat'; st.textContent=busyMsg||'Đang đồng bộ…'; }
+  else if(sy.err){ st.className='syncstat bad'; st.textContent='Đồng bộ lỗi: '+sy.err+' (dữ liệu vẫn an toàn trên máy, sẽ thử lại)'; }
+  else { st.className='syncstat ok'; st.textContent='Đã kết nối · đồng bộ lần cuối: '+t; }
+}
+$('syncConnect').onclick=async()=>{
+  const url=$('syncUrl').value.trim(), tok=$('syncTok').value.trim();
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[^/\s]+\/exec$/.test(url)){ toast('Link chưa đúng — phải dạng https://script.google.com/macros/s/…/exec'); return; }
+  if(!tok){ toast('Nhập mã bí mật'); return; }
+  S.sync=Object.assign(SYNC0(),{url,token:tok}); save(true); $('syncTok').value='';
+  await syncNow(true);
+  if(S.sync.err){ const m=S.sync.err; S.sync=SYNC0(); save(true); renderSync(); toast('Chưa kết nối được: '+m); }
+};
+$('syncNowBtn').onclick=()=>syncNow(true);
+$('syncOff').onclick=()=>{ if(!confirm('Ngắt kết nối? Dữ liệu trên máy và trên Google Sheet vẫn giữ nguyên.')) return; S.sync=SYNC0(); save(true); renderSync(); toast('Đã ngắt đồng bộ'); };
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncNow(false); });
+window.addEventListener('online',()=>syncNow(false));
+setInterval(()=>{ if(!document.hidden) syncNow(false); },90000);
+
 /* ---------- khởi động ---------- */
-load(); render();
+load(); render(); renderSync(); if(S.sync.url) syncNow(false);
 window.addEventListener('online',renderStatus); window.addEventListener('offline',renderStatus);
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
   const hadSW=!!navigator.serviceWorker.controller; let reloaded=false;
